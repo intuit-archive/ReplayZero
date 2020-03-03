@@ -1,0 +1,11 @@
+version: 2.1
+
+jobs:
+  build:
+    docker:
+      - image: circleci/golang:1.13
+    steps:
+      - checkout
+      - run: go get golang.org/x/lint/golint
+      - run: make
+      # TODO publish on release
