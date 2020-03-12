@@ -3,12 +3,20 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"os"
 	"os/user"
 	"time"
+
+	"github.com/ProtonMail/gopenpgp/v2/crypto"
+	"github.com/ProtonMail/gopenpgp/v2/helper"
+)
+
+var (
+	gpgPublicKey = ""
 )
 
 // events
@@ -17,7 +25,7 @@ const (
 	telemetryUsageOnline  = iota
 	telemetryUsageOffline = iota
 
-	telemetryEnvironmentVariable = "REPLAY_ZERO_TELEMETRY_ENDPOINT"
+	telemetryEndpoint = "REPLAY_ZERO_TELEMETRY_ENDPOINT"
 )
 
 // logInfo contains data to send to the HTTP endpoint.
@@ -31,7 +39,7 @@ type logInfo struct {
 // getTelemetryEndpoint returns the value of the environment
 // variable 'REPLAY_ZERO_TELEMETRY_ENDPOINT'.
 func getTelemetryEndpoint() string {
-	return os.Getenv(telemetryEnvironmentVariable)
+	return os.Getenv(telemetryEndpoint)
 }
 
 // logUsage sends usage information - when enabled - to
@@ -42,6 +50,13 @@ func logUsage(event int) {
 		// If telemetry is not enabled, then there's aboslutely nothing
 		// that needs to happen here. Immediately return.
 		return
+	} else if gpgPublicKey == "" {
+		contents, err := fetchGpgPublicKey()
+		if err != nil {
+			logDebug(err.Error())
+			return
+		}
+		gpgPublicKey = contents
 	}
 	// convert the telemetry events from ints to strings
 	eventMessage := ""
@@ -87,11 +102,17 @@ func getCurrentUser() string {
 func sendLogInfoToRemote(info *logInfo) error {
 	client := &http.Client{}
 	data, err := json.Marshal(info)
+
 	logDebug(fmt.Sprintf("Sending data to the telemetry endpoint: %s", data))
 	if err != nil {
 		return err
 	}
-	req, err := http.NewRequest("POST", getTelemetryEndpoint(), bytes.NewBuffer(data))
+	encrypted, err := gpgEncrypt(data)
+	if err != nil {
+		return err
+	}
+
+	req, err := http.NewRequest("POST", getTelemetryEndpoint(), bytes.NewBuffer(encrypted))
 	if err != nil {
 		return err
 	}
@@ -105,4 +126,30 @@ func sendLogInfoToRemote(info *logInfo) error {
 	}
 	logDebug(fmt.Sprintf("Telemetry endpoint response code: %s, body: %s", resp.Status, responseBody))
 	return resp.Body.Close()
+}
+
+func fetchGpgPublicKey() (string, error) {
+	logDebug("Fetching encryption key...")
+	resp, err := http.Get(getTelemetryEndpoint())
+	raw, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+	keyContents := string(raw)
+
+	_, err = crypto.NewKeyFromArmored(keyContents)
+	if err != nil {
+		return "", errors.New("Key material is not armored")
+	}
+
+	return keyContents, nil
+}
+
+func gpgEncrypt(data []byte) ([]byte, error) {
+	stringData := string(data)
+	encrypted, err := helper.EncryptMessageArmored(gpgPublicKey, stringData)
+	if err != nil {
+		return []byte{}, err
+	}
+	return []byte(encrypted), nil
 }
