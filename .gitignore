@@ -18,3 +18,4 @@ replay-nginx-agent
 *.feature
 *.scala
 bin
+replay-zero
