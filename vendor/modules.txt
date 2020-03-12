@@ -1,4 +1,14 @@
+# github.com/ProtonMail/go-mime v0.0.0-20190923161245-9b5a4261663a
+github.com/ProtonMail/go-mime
+# github.com/ProtonMail/gopenpgp/v2 v2.0.0
+## explicit
+github.com/ProtonMail/gopenpgp/v2/armor
+github.com/ProtonMail/gopenpgp/v2/constants
+github.com/ProtonMail/gopenpgp/v2/crypto
+github.com/ProtonMail/gopenpgp/v2/helper
+github.com/ProtonMail/gopenpgp/v2/internal
 # github.com/aws/aws-sdk-go v1.28.14
+## explicit
 github.com/aws/aws-sdk-go/aws
 github.com/aws/aws-sdk-go/aws/awserr
 github.com/aws/aws-sdk-go/aws/awsutil
@@ -37,14 +47,74 @@ github.com/aws/aws-sdk-go/service/kinesis
 github.com/aws/aws-sdk-go/service/sts
 github.com/aws/aws-sdk-go/service/sts/stsiface
 # github.com/go-test/deep v1.0.5
+## explicit
 github.com/go-test/deep
 # github.com/jmespath/go-jmespath v0.0.0-20180206201540-c2b33e8439af
 github.com/jmespath/go-jmespath
+# github.com/konsorten/go-windows-terminal-sequences v1.0.1
+github.com/konsorten/go-windows-terminal-sequences
 # github.com/kylelemons/godebug v1.1.0
+## explicit
 github.com/kylelemons/godebug/diff
 # github.com/nu7hatch/gouuid v0.0.0-20131221200532-179d4d0c4d8d
+## explicit
 github.com/nu7hatch/gouuid
+# github.com/pkg/errors v0.8.1
+github.com/pkg/errors
+# github.com/sirupsen/logrus v1.4.2
+github.com/sirupsen/logrus
 # github.com/spf13/pflag v1.0.5
+## explicit
 github.com/spf13/pflag
 # github.com/ztrue/shutdown v0.1.1
+## explicit
 github.com/ztrue/shutdown
+# golang.org/x/crypto v0.0.0-20190923035154-9ee001bba392 => github.com/ProtonMail/crypto v0.0.0-20191122234321-e77a1f03baa0
+golang.org/x/crypto/bitcurves
+golang.org/x/crypto/brainpool
+golang.org/x/crypto/cast5
+golang.org/x/crypto/curve25519
+golang.org/x/crypto/eax
+golang.org/x/crypto/ed25519
+golang.org/x/crypto/ed25519/internal/edwards25519
+golang.org/x/crypto/internal/byteutil
+golang.org/x/crypto/internal/randutil
+golang.org/x/crypto/internal/syscall/unix
+golang.org/x/crypto/ocb
+golang.org/x/crypto/openpgp
+golang.org/x/crypto/openpgp/aes/keywrap
+golang.org/x/crypto/openpgp/armor
+golang.org/x/crypto/openpgp/clearsign
+golang.org/x/crypto/openpgp/ecdh
+golang.org/x/crypto/openpgp/elgamal
+golang.org/x/crypto/openpgp/errors
+golang.org/x/crypto/openpgp/internal/algorithm
+golang.org/x/crypto/openpgp/internal/ecc
+golang.org/x/crypto/openpgp/internal/encoding
+golang.org/x/crypto/openpgp/packet
+golang.org/x/crypto/openpgp/s2k
+golang.org/x/crypto/rand
+golang.org/x/crypto/rsa
+# golang.org/x/net v0.0.0-20191126235420-ef20fe5d7933
+## explicit
+# golang.org/x/sys v0.0.0-20190422165155-953cdadca894
+golang.org/x/sys/unix
+# golang.org/x/text v0.3.2
+golang.org/x/text/encoding
+golang.org/x/text/encoding/charmap
+golang.org/x/text/encoding/htmlindex
+golang.org/x/text/encoding/internal
+golang.org/x/text/encoding/internal/identifier
+golang.org/x/text/encoding/japanese
+golang.org/x/text/encoding/korean
+golang.org/x/text/encoding/simplifiedchinese
+golang.org/x/text/encoding/traditionalchinese
+golang.org/x/text/encoding/unicode
+golang.org/x/text/internal/language
+golang.org/x/text/internal/language/compact
+golang.org/x/text/internal/tag
+golang.org/x/text/internal/utf8internal
+golang.org/x/text/language
+golang.org/x/text/runes
+golang.org/x/text/transform
+# golang.org/x/crypto => github.com/ProtonMail/crypto v0.0.0-20191122234321-e77a1f03baa0

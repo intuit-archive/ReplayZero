@@ -1,0 +1,73 @@
+package crypto
+
+import (
+	"bytes"
+	"fmt"
+
+	"github.com/pkg/errors"
+
+	"golang.org/x/crypto/openpgp/packet"
+)
+
+// DecryptSessionKey returns the decrypted session key from a binary encrypted session key packet.
+func (keyRing *KeyRing) DecryptSessionKey(keyPacket []byte) (*SessionKey, error) {
+	keyReader := bytes.NewReader(keyPacket)
+	packets := packet.NewReader(keyReader)
+
+	var p packet.Packet
+	var err error
+	if p, err = packets.Next(); err != nil {
+		return nil, err
+	}
+
+	ek := p.(*packet.EncryptedKey)
+	var decryptErr error
+	for _, key := range keyRing.entities.DecryptionKeys() {
+		priv := key.PrivateKey
+		if priv.Encrypted {
+			continue
+		}
+
+		if decryptErr = ek.Decrypt(priv, nil); decryptErr == nil {
+			break
+		}
+	}
+
+	if decryptErr != nil {
+		return nil, decryptErr
+	}
+
+	if ek == nil {
+		return nil, errors.New("gopenpgp: unable to decrypt session key")
+	}
+
+	return newSessionKeyFromEncrypted(ek)
+}
+
+// EncryptSessionKey encrypts the session key with the unarmored
+// publicKey and returns a binary public-key encrypted session key packet.
+func (keyRing *KeyRing) EncryptSessionKey(sk *SessionKey) ([]byte, error) {
+	outbuf := &bytes.Buffer{}
+
+	cf, err := sk.GetCipherFunc()
+	if err != nil {
+		return nil, errors.Wrap(err, "gopenpgp: unable to encrypt session key")
+	}
+
+	var pub *packet.PublicKey
+	for _, e := range keyRing.entities {
+		if encryptionKey, ok := e.EncryptionKey(getNow()); ok {
+			pub = encryptionKey.PublicKey
+			break
+		}
+	}
+	if pub == nil {
+		return nil, errors.New("cannot set key: no public key available")
+	}
+
+	if err := packet.SerializeEncryptedKey(outbuf, pub, cf, sk.Key, nil); err != nil {
+		err = fmt.Errorf("gopenpgp: cannot set key: %v", err)
+		return nil, err
+	}
+	return outbuf.Bytes(), nil
+}
