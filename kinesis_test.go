@@ -30,8 +30,8 @@ func TestGetStreamNameOverride(t *testing.T) {
 		t.Fatalf("Could not set env var: %v", err)
 	}
 	name := getStreamName()
-	if *name != "foobar" {
-		t.Fatalf("Stream name was %s", *name)
+	if name != "foobar" {
+		t.Fatalf("Stream name was %s", name)
 	}
 }
 
@@ -41,8 +41,8 @@ func TestGetRegionOverride(t *testing.T) {
 		t.Fatalf("Could not set env var: %v", err)
 	}
 	name := getRegion()
-	if *name != "foobar" {
-		t.Fatalf("Stream name was %s", *name)
+	if name != "foobar" {
+		t.Fatalf("Stream name was %s", name)
 	}
 }
 
