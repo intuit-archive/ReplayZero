@@ -184,9 +184,18 @@ A: Check that either
 
 ## Telemetry
 
-This tool supports sending usage metrics to an HTTP endpoint, but this is **completely disabled** in the open source repo - there's no URL set to send data to. If you want to use this for internal reporting, set the environment variable `REPLAY_ZERO_TELEMETRY_ENDPOINT`.
+This tool supports sending usage metrics to an [Amazon Kinesis data stream](https://aws.amazon.com/kinesis/data-streams/), but this is **completely disabled** in the open source repo - there's no URL set to send data to. If you want to use this for internal reporting, set the environment variables
+
+* `REPLAY_ZERO_TELEMETRY_STREAM` (stream name)
+* `REPLAY_ZERO_TELEMETRY_ROLE` (IAM role to assume credentials for writing to the stream)
 
 The code for this is in [`telemetry.go`](./telemetry.go) - take a look if you're curious or concerned.
+
+### Security
+
+The AWS SDK provides in-transit encryption for API transactions (like the Kinesis `PutRecord` API used to send telemetry). However, Kinesis messages are by default unencrypted at rest while waiting to be consumed from the stream (24 hours by default).
+
+Kinesis does offer Server-Side Encryption (SSE) which can be enabled with a default or custom KMS master key. See the AWS docs on [Kinesis SSE](https://docs.aws.amazon.com/streams/latest/dev/getting-started-with-sse.html) to learn more.
 
 ## Developing
 
