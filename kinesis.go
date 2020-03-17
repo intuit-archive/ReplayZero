@@ -13,6 +13,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/credentials/stscreds"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/kinesis"
+	"github.com/aws/aws-sdk-go/service/kinesis/kinesisiface"
 	uuid "github.com/nu7hatch/gouuid"
 )
 
@@ -43,7 +44,7 @@ func getRegion() string {
 	return region
 }
 
-func buildKinesisClient() *kinesis.Kinesis {
+func buildKinesisClient(streamARN string) *kinesis.Kinesis {
 	userSession := session.Must(session.NewSession(&aws.Config{
 		CredentialsChainVerboseErrors: aws.Bool(verboseCredentialErrors),
 		Region:                        aws.String(getRegion()),
@@ -66,7 +67,7 @@ func buildKinesisClient() *kinesis.Kinesis {
 		})
 	} else {
 		log.Println("Fetching temp credentials...")
-		kinesisTempCreds := stscreds.NewCredentials(userSession, flags.streamRoleArn)
+		kinesisTempCreds := stscreds.NewCredentials(userSession, streamARN)
 		log.Println("Success!")
 		kclient = kinesis.New(userSession, &aws.Config{
 			CredentialsChainVerboseErrors: aws.Bool(verboseCredentialErrors),
@@ -113,7 +114,7 @@ func buildMessages(line string) ([]EventChunk, error) {
 	return messages, nil
 }
 
-func sendToStream(message interface{}, client *kinesis.Kinesis) error {
+func sendToStream(message interface{}, stream string, client kinesisiface.KinesisAPI) error {
 	dataBytes, err := json.Marshal(message)
 	if err != nil {
 		return err
