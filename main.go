@@ -18,15 +18,6 @@ import (
 )
 
 const (
-	streamRoleArn = ""
-	streamName    = ""
-	defaultRegion = "us-west-2"
-
-	messageSource  = "event_json"
-	messageVersion = 4
-
-	chunkSize = 1048576 - 200
-
 	verboseCredentialErrors = true
 )
 
@@ -112,16 +103,6 @@ func getFormat(output string) outputFormat {
 	}
 }
 
-func getOfflineHandler(output string) eventHandler {
-	return &offlineHandler{
-		format:           getFormat(output),
-		defaultBatchSize: flags.batchSize,
-		currentBatchSize: flags.batchSize,
-		writerFactory:    getFileWriter,
-		templateFuncMap:  templates.DefaultFuncMap(),
-	}
-}
-
 func buildNewTargetURL(req *http.Request) string {
 	scheme := req.URL.Scheme
 	if scheme == "" {
@@ -195,7 +176,7 @@ func main() {
 			os.Exit(1)
 		}
 		log.Println("Running ONLINE, sending recorded events to Kinesis")
-		h = getKinesisWrapper()
+		h = getOnlineHandler()
 	} else {
 		log.Printf("Running OFFLINE, writing out events to %s files\n", flags.output)
 		h = getOfflineHandler(flags.output)

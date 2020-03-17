@@ -9,6 +9,8 @@ import (
 	"strconv"
 	"strings"
 	"text/template"
+
+	"github.com/intuit/replay-zero/templates"
 )
 
 const (
@@ -30,6 +32,16 @@ type offlineHandler struct {
 	numWrites        int
 	writerFactory    writerFactory
 	templateFuncMap  template.FuncMap
+}
+
+func getOfflineHandler(output string) eventHandler {
+	return &offlineHandler{
+		format:           getFormat(output),
+		defaultBatchSize: flags.batchSize,
+		currentBatchSize: flags.batchSize,
+		writerFactory:    getFileWriter,
+		templateFuncMap:  templates.DefaultFuncMap(),
+	}
 }
 
 func (h *offlineHandler) handleEvent(logEvent HTTPEvent) {

@@ -16,25 +16,20 @@ import (
 	uuid "github.com/nu7hatch/gouuid"
 )
 
-// KinesisMessage is the JSON format that Request Processor initially expects
-type KinesisMessage struct {
-	Version int        `json:"version"`
-	Source  string     `json:"source"`
-	Event   EventChunk `json:"event"`
-}
+const (
+	defaultRegion = "us-west-2"
+	chunkSize     = 1048576 - 200
+)
 
 // EventChunk contains raw event data + metadata if chunking a large event
 type EventChunk struct {
 	ChunkNumber int    `json:"chunkNumber"`
 	NumChunks   int    `json:"numberOfChunks"`
-	Asset       string `json:"offering"`
-	Environment string `json:"environment"`
 	UUID        string `json:"uuid"`
 	Data        string `json:"data"`
-	IsUpstream  bool   `json:"upstream"`
 }
 
-type kinesisWrapperHandler struct {
+type onlineHandler struct {
 	client *kinesis.Kinesis
 }
 
@@ -46,8 +41,6 @@ func getStreamName() *string {
 	var name string
 	if os.Getenv("STREAM_NAME") != "" {
 		name = os.Getenv("STREAM_NAME")
-	} else {
-		name = streamName
 	}
 	return &name
 }
@@ -67,7 +60,7 @@ func getVerboseCredentialErrors() *bool {
 	return &copy
 }
 
-func getKinesisWrapper() *kinesisWrapperHandler {
+func getOnlineHandler() *onlineHandler {
 	userSession := session.Must(session.NewSession(&aws.Config{
 		CredentialsChainVerboseErrors: getVerboseCredentialErrors(),
 		Region:                        getRegion(),
@@ -90,7 +83,7 @@ func getKinesisWrapper() *kinesisWrapperHandler {
 		})
 	} else {
 		log.Println("Fetching temp credentials...")
-		kinesisTempCreds := stscreds.NewCredentials(userSession, streamRoleArn)
+		kinesisTempCreds := stscreds.NewCredentials(userSession, flags.streamRoleArn)
 		log.Println("Success!")
 		kclient = kinesis.New(userSession, &aws.Config{
 			CredentialsChainVerboseErrors: getVerboseCredentialErrors(),
@@ -98,12 +91,12 @@ func getKinesisWrapper() *kinesisWrapperHandler {
 			Region:                        getRegion(),
 		})
 	}
-	return &kinesisWrapperHandler{
+	return &onlineHandler{
 		client: kclient,
 	}
 }
 
-func (h *kinesisWrapperHandler) handleEvent(line HTTPEvent) {
+func (h *onlineHandler) handleEvent(line HTTPEvent) {
 	lineStr := httpEventToString(line)
 	messages, err := buildMessages(lineStr)
 	if err != nil {
@@ -134,37 +127,32 @@ func chunkData(data string, size int) []string {
 	return chunks
 }
 
-func buildMessages(line string) ([]KinesisMessage, error) {
+func buildMessages(line string) ([]EventChunk, error) {
 	chunks := chunkData(line, chunkSize)
 	numChunks := len(chunks)
-	messages := []KinesisMessage{}
+	messages := []EventChunk{}
 	eventUUID, err := uuid.NewV4()
 	if err != nil {
 		return messages, err
 	}
 	for chunkID, chunk := range chunks {
-		nextMessage := KinesisMessage{
-			Version: messageVersion,
-			Source:  messageSource,
-			Event: EventChunk{
-				ChunkNumber: chunkID,
-				NumChunks:   numChunks,
-				UUID:        eventUUID.String(),
-				Data:        chunk,
-				IsUpstream:  true,
-			},
+		nextMessage := EventChunk{
+			ChunkNumber: chunkID,
+			NumChunks:   numChunks,
+			UUID:        eventUUID.String(),
+			Data:        chunk,
 		}
 		messages = append(messages, nextMessage)
 	}
 	return messages, nil
 }
 
-func sendToStream(message KinesisMessage, client *kinesis.Kinesis) error {
+func sendToStream(message EventChunk, client *kinesis.Kinesis) error {
 	dataBytes, err := json.Marshal(message)
 	if err != nil {
 		return err
 	}
-	log.Println("Sending event with UUID=" + message.Event.UUID)
+	log.Println("Sending event with UUID=" + message.UUID)
 	partition := "replay-partition-key-" + time.Now().String()
 	response, err := client.PutRecord(&kinesis.PutRecordInput{
 		StreamName:   getStreamName(),
@@ -179,4 +167,4 @@ func sendToStream(message KinesisMessage, client *kinesis.Kinesis) error {
 }
 
 // Kinesis: No-op as this handler doesn't buffer anything
-func (h *kinesisWrapperHandler) flushBuffer() {}
+func (h *onlineHandler) flushBuffer() {}

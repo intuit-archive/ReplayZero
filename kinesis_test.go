@@ -47,16 +47,11 @@ func TestGetRegionOverride(t *testing.T) {
 }
 
 func TestBuildMessages(t *testing.T) {
-	expected := KinesisMessage{
-		Version: 4,
-		Source:  "event_json",
-		Event: EventChunk{
-			ChunkNumber: 0,
-			NumChunks:   1,
-			UUID:        "",
-			Data:        "foobar",
-			IsUpstream:  true,
-		},
+	expected := EventChunk{
+		ChunkNumber: 0,
+		NumChunks:   1,
+		UUID:        "",
+		Data:        "foobar",
 	}
 	messages, err := buildMessages("foobar")
 	if err != nil {
@@ -66,13 +61,13 @@ func TestBuildMessages(t *testing.T) {
 		log.Fatalf("Expected 1 message, got %d", len(messages))
 	}
 	first := messages[0]
-	expected.Event.UUID = first.Event.UUID
+	expected.UUID = first.UUID
 	if !reflect.DeepEqual(first, expected) {
 		log.Fatalf("Kinesis message is not the expected, got %v", first)
 	}
 }
 
 func TestFlushKinesisBuffer(t *testing.T) {
-	wrapper := kinesisWrapperHandler{}
+	wrapper := onlineHandler{}
 	wrapper.flushBuffer()
 }
