@@ -27,6 +27,7 @@ func getOnlineHandler(streamName, streamRole string) *onlineHandler {
 }
 
 func (h *onlineHandler) handleEvent(line HTTPEvent) {
+	go telemetry.logUsage(telemetryUsageOnline)
 	lineStr := httpEventToString(line)
 	messages, err := buildMessages(lineStr)
 	if err != nil {
@@ -39,11 +40,6 @@ func (h *onlineHandler) handleEvent(line HTTPEvent) {
 			log.Println(err)
 		}
 	}
-	go logUsage(telemetryUsageOnline)
-}
-
-func (h *onlineHandler) streamEvent(event EventChunk) error {
-	return sendToStream(event, h.kinesisStreamName, h.client)
 }
 
 // Kinesis: No-op as this handler doesn't buffer anything

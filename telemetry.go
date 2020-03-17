@@ -1,14 +1,12 @@
 package main
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
-	"io/ioutil"
-	"net/http"
 	"os"
 	"os/user"
 	"time"
+
+	"github.com/aws/aws-sdk-go/service/kinesis/kinesisiface"
 )
 
 // events
@@ -17,8 +15,22 @@ const (
 	telemetryUsageOnline  = iota
 	telemetryUsageOffline = iota
 
-	telemetryEnvironmentVariable = "REPLAY_ZERO_TELEMETRY_ENDPOINT"
+	telemetryStreamName = "REPLAY_ZERO_TELEMETRY_STREAM"
+	telemetryStreamRole = "REPLAY_ZERO_TELEMETRY_ROLE"
 )
+
+type telemetryAgent interface {
+	logUsage(event int)
+}
+
+// No-op agent in case the proper variables are not set
+type noopTelemetryAgent struct{}
+
+// Agent to send telemetry to a Kinesis stream
+type kinesisTelemetryAgent struct {
+	stream string
+	client kinesisiface.KinesisAPI
+}
 
 // logInfo contains data to send to the HTTP endpoint.
 type logInfo struct {
@@ -28,21 +40,34 @@ type logInfo struct {
 	Timestamp int64
 }
 
-// getTelemetryEndpoint returns the value of the environment
-// variable 'REPLAY_ZERO_TELEMETRY_ENDPOINT'.
-func getTelemetryEndpoint() string {
-	return os.Getenv(telemetryEnvironmentVariable)
+// Factory-type builder for telemetry agent, in case there's want / need
+// to add different telemetry sinks in the future
+func getTelemetryAgent() telemetryAgent {
+	streamName := os.Getenv(telemetryStreamName)
+	streamRole := os.Getenv(telemetryStreamRole)
+
+	if streamName == "" {
+		logDebug("Missing telemetry stream name, returning no-op agent (will not send telemetry)")
+		return &noopTelemetryAgent{}
+	} else if streamRole != "" {
+		logDebug("Missing telemetry stream role ARN, returning no-op agent (will not send telemetry)")
+		return &noopTelemetryAgent{}
+	}
+	logDebug("Building Kinesis agent for sending telemetry")
+	return &kinesisTelemetryAgent{
+		stream: streamName,
+		client: buildKinesisClient(streamRole),
+	}
+}
+
+func (agent *noopTelemetryAgent) logUsage(event int) {
+	logDebug("Telemetry: NO-OP")
 }
 
 // logUsage sends usage information - when enabled - to
 // an HTTP endpoint. Whether or not this func sends data
 // is dependent on the `telemetryEndpoint` global.
-func logUsage(event int) {
-	if getTelemetryEndpoint() == "" {
-		// If telemetry is not enabled, then there's aboslutely nothing
-		// that needs to happen here. Immediately return.
-		return
-	}
+func (agent *kinesisTelemetryAgent) logUsage(event int) {
 	// convert the telemetry events from ints to strings
 	eventMessage := ""
 	mode := ""
@@ -64,9 +89,11 @@ func logUsage(event int) {
 		Message:   eventMessage,
 		Timestamp: time.Now().Unix(),
 	}
-	err := sendLogInfoToRemote(info)
+	err := agent.streamTelemetry(info)
 	if err != nil {
-		logDebug(fmt.Sprintf("Could not reach the HTTP endpoint: %v\n", err))
+		logDebug(fmt.Sprintf("Could not send telemetry: %v\n", err))
+	} else {
+		logDebug("Telemetry log success")
 	}
 }
 
@@ -80,29 +107,8 @@ func getCurrentUser() string {
 	return user.Username
 }
 
-// sendLogInfoToRemote sends a payload of information to the remote
-// telemetry HTTP endpoint.
-// This func does not check to see if telemetry is enabled or not -
-// call `logUsage` for that and to build the payload.
-func sendLogInfoToRemote(info *logInfo) error {
-	client := &http.Client{}
-	data, err := json.Marshal(info)
-	logDebug(fmt.Sprintf("Sending data to the telemetry endpoint: %s", data))
-	if err != nil {
-		return err
-	}
-	req, err := http.NewRequest("POST", getTelemetryEndpoint(), bytes.NewBuffer(data))
-	if err != nil {
-		return err
-	}
-	resp, err := client.Do(req)
-	if err != nil {
-		return err
-	}
-	responseBody, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return err
-	}
-	logDebug(fmt.Sprintf("Telemetry endpoint response code: %s, body: %s", resp.Status, responseBody))
-	return resp.Body.Close()
+// Send a telemetry message to the stream specified by `REPLAY_ZERO_TELEMETRY_STREAM`
+// and authorized by the IAM role `REPLAY_ZERO_TELEMETRY_ROLE`
+func (agent *kinesisTelemetryAgent) streamTelemetry(info *logInfo) error {
+	return sendToStream(info, agent.stream, agent.client)
 }

@@ -45,6 +45,7 @@ func getOfflineHandler(output string) eventHandler {
 }
 
 func (h *offlineHandler) handleEvent(logEvent HTTPEvent) {
+	go telemetry.logUsage(telemetryUsageOffline)
 	logEvent.ReqHeaders = h.readReplayHeaders(logEvent.ReqHeaders)
 	h.buffer = append(h.buffer, logEvent)
 

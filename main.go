@@ -21,22 +21,25 @@ const (
 	verboseCredentialErrors = true
 )
 
-// Version is injected at build time via the '-X' linker flag
-// https://golang.org/cmd/link/#hdr-Command_Line
-var Version string
+var (
+	// Version is injected at build time via the '-X' linker flag
+	// https://golang.org/cmd/link/#hdr-Command_Line
+	Version string
 
-var flags struct {
-	version           bool
-	listenPort        int
-	defaultTargetPort int
-	batchSize         int
-	output            string
-	debug             bool
-	streamRoleArn     string
-	streamName        string
-}
+	flags struct {
+		version           bool
+		listenPort        int
+		defaultTargetPort int
+		batchSize         int
+		output            string
+		debug             bool
+		streamRoleArn     string
+		streamName        string
+	}
 
-var client = &http.Client{}
+	client    = &http.Client{}
+	telemetry telemetryAgent
+)
 
 func check(err error) {
 	if err != nil {
@@ -166,7 +169,8 @@ func createServerHandler(h eventHandler) func(http.ResponseWriter, *http.Request
 }
 
 func main() {
-	go logUsage(telemetryUsageOpen)
+	telemetry = getTelemetryAgent()
+	go telemetry.logUsage(telemetryUsageOpen)
 	readFlags()
 
 	var h eventHandler

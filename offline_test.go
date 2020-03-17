@@ -8,13 +8,17 @@ import (
 	"log"
 	"testing"
 
-	"github.com/kylelemons/godebug/diff"
 	"github.com/intuit/replay-zero/templates"
+	"github.com/kylelemons/godebug/diff"
 )
 
 // - - - - - - - - - - - - -
 //        UTILITIES
 // - - - - - - - - - - - - -
+
+func init() {
+	telemetry = &noopTelemetryAgent{}
+}
 
 var sampleEvent = HTTPEvent{
 	PairID:     "c1487b92-01a0-4b08-b66d-52c597e88e67",
