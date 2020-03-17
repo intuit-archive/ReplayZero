@@ -15,12 +15,14 @@ type EventChunk struct {
 }
 
 type onlineHandler struct {
-	client kinesisiface.KinesisAPI
+	kinesisStreamName string
+	client            kinesisiface.KinesisAPI
 }
 
-func getOnlineHandler() *onlineHandler {
+func getOnlineHandler(streamName, streamRole string) *onlineHandler {
 	return &onlineHandler{
-		client: buildKinesisClient(flags.streamRoleArn),
+		kinesisStreamName: streamName,
+		client:            buildKinesisClient(streamRole),
 	}
 }
 
@@ -38,6 +40,10 @@ func (h *onlineHandler) handleEvent(line HTTPEvent) {
 		}
 	}
 	go logUsage(telemetryUsageOnline)
+}
+
+func (h *onlineHandler) streamEvent(event EventChunk) error {
+	return sendToStream(event, h.kinesisStreamName, h.client)
 }
 
 // Kinesis: No-op as this handler doesn't buffer anything

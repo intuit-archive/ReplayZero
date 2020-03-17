@@ -24,17 +24,6 @@ func TestChunk(t *testing.T) {
 	}
 }
 
-func TestGetStreamNameOverride(t *testing.T) {
-	err := os.Setenv("STREAM_NAME", "foobar")
-	if err != nil {
-		t.Fatalf("Could not set env var: %v", err)
-	}
-	name := getStreamName()
-	if name != "foobar" {
-		t.Fatalf("Stream name was %s", name)
-	}
-}
-
 func TestGetRegionOverride(t *testing.T) {
 	err := os.Setenv("AWS_REGION", "foobar")
 	if err != nil {

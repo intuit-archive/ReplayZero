@@ -176,7 +176,7 @@ func main() {
 			os.Exit(1)
 		}
 		log.Println("Running ONLINE, sending recorded events to Kinesis")
-		h = getOnlineHandler()
+		h = getOnlineHandler(flags.streamName, flags.streamRoleArn)
 	} else {
 		log.Printf("Running OFFLINE, writing out events to %s files\n", flags.output)
 		h = getOfflineHandler(flags.output)

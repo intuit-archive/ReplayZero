@@ -22,18 +22,6 @@ const (
 	chunkSize     = 1048576 - 200
 )
 
-// Serves 2 purposes:
-//   1. Allows for dev override with env var
-//   2. If falling back to default, const value is not addressable
-// 		but AWS SDK needs a string pointer (*string vs. string)
-func getStreamName() string {
-	var name string
-	if os.Getenv("STREAM_NAME") != "" {
-		name = os.Getenv("STREAM_NAME")
-	}
-	return name
-}
-
 func getRegion() string {
 	var region string
 	if os.Getenv("AWS_REGION") != "" {
@@ -121,7 +109,7 @@ func sendToStream(message interface{}, stream string, client kinesisiface.Kinesi
 	}
 	partition := "replay-partition-key-" + time.Now().String()
 	response, err := client.PutRecord(&kinesis.PutRecordInput{
-		StreamName:   aws.String(getStreamName()),
+		StreamName:   aws.String(stream),
 		Data:         dataBytes,
 		PartitionKey: &partition,
 	})
