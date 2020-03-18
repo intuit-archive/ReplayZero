@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -20,8 +21,10 @@ import (
 )
 
 const (
-	defaultRegion = "us-west-2"
-	chunkSize     = 1048576 - 200
+	defaultRegion        = "us-west-2"
+	chunkSize            = 1048576 - 200
+	kinesaliteStreamName = "replay-zero-dev"
+	kinesaliteEndpoint   = "https://localhost:4567"
 )
 
 func getRegion() string {
@@ -34,38 +37,49 @@ func getRegion() string {
 	return region
 }
 
-func buildKinesisClient(streamARN string) *kinesis.Kinesis {
+func buildClient(streamName, streamRole string) *kinesis.Kinesis {
+	if strings.HasPrefix(streamRole, kinesaliteStreamName) {
+		return buildKinesaliteClient(streamName)
+	}
+	return buildKinesisClient(streamRole)
+}
+
+// Uses STS to assume an IAM role for credentials to write records
+// to a real Kinesis stream in AWS
+func buildKinesisClient(streamRole string) *kinesis.Kinesis {
+	log.Printf("Creating AWS Kinesis client")
 	userSession := session.Must(session.NewSession(&aws.Config{
 		CredentialsChainVerboseErrors: aws.Bool(verboseCredentialErrors),
 		Region:                        aws.String(getRegion()),
 	}))
-	var kclient *kinesis.Kinesis
-	log.Printf("Creating Kinesis client")
-	// Allows for dev override
-	endpoint := os.Getenv("STREAM_ENDPOINT")
-	if endpoint != "" {
-		log.Printf("Sending unverified traffic to stream endpoint=" + endpoint)
-		kclient = kinesis.New(userSession, &aws.Config{
-			Endpoint:    &endpoint,
-			Credentials: credentials.NewStaticCredentials("x", "x", "x"),
-			Region:      aws.String(getRegion()),
-			HTTPClient: &http.Client{
-				Transport: &http.Transport{
-					TLSClientConfig: &tls.Config{
-						InsecureSkipVerify: true},
-				}},
-		})
-	} else {
-		log.Println("Fetching temp credentials...")
-		kinesisTempCreds := stscreds.NewCredentials(userSession, streamARN)
-		log.Println("Success!")
-		kclient = kinesis.New(userSession, &aws.Config{
-			CredentialsChainVerboseErrors: aws.Bool(verboseCredentialErrors),
-			Credentials:                   kinesisTempCreds,
-			Region:                        aws.String(getRegion()),
-		})
-	}
-	return kclient
+
+	log.Println("Fetching temp credentials...")
+	kinesisTempCreds := stscreds.NewCredentials(userSession, streamRole)
+	log.Println("Success!")
+
+	return kinesis.New(userSession, &aws.Config{
+		CredentialsChainVerboseErrors: aws.Bool(verboseCredentialErrors),
+		Credentials:                   kinesisTempCreds,
+		Region:                        aws.String(getRegion()),
+	})
+}
+
+// Kinesalite is a lightweight implementation of Kinesis
+// useful for development scenarios.
+// https://github.com/mhart/kinesalite
+func buildKinesaliteClient(streamName string) *kinesis.Kinesis {
+	log.Printf("Creating local Kinesalite client")
+	log.Printf("Sending unverified traffic to stream endpoint=" + kinesaliteEndpoint)
+	return kinesis.New(session.Must(session.NewSession()), &aws.Config{
+		Endpoint:    aws.String(kinesaliteEndpoint),
+		Credentials: credentials.NewStaticCredentials("x", "x", "x"),
+		Region:      aws.String(getRegion()),
+		HTTPClient: &http.Client{
+			Transport: &http.Transport{
+				TLSClientConfig: &tls.Config{
+					InsecureSkipVerify: true},
+			}},
+	})
 }
 
 func chunkData(data string, size int) []string {
@@ -88,6 +102,7 @@ func buildMessages(line string) []EventChunk {
 	chunks := chunkData(line, chunkSize)
 	numChunks := len(chunks)
 	messages := []EventChunk{}
+	// Multiple chunks need a sort of "group ID"
 	eventUUID, err := uuid.NewV4()
 	var correlation string
 	if err != nil {

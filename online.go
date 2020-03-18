@@ -22,7 +22,7 @@ type onlineHandler struct {
 func getOnlineHandler(streamName, streamRole string) *onlineHandler {
 	return &onlineHandler{
 		kinesisStreamName: streamName,
-		client:            buildKinesisClient(streamRole),
+		client:            buildClient(streamName, streamRole),
 	}
 }
 

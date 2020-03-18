@@ -49,14 +49,11 @@ func getTelemetryAgent() telemetryAgent {
 	if streamName == "" {
 		logDebug("Missing telemetry stream name, returning no-op agent (will not send telemetry)")
 		return &noopTelemetryAgent{}
-	} else if streamRole != "" {
-		logDebug("Missing telemetry stream role ARN, returning no-op agent (will not send telemetry)")
-		return &noopTelemetryAgent{}
 	}
 	logDebug("Building Kinesis agent for sending telemetry")
 	return &kinesisTelemetryAgent{
 		stream: streamName,
-		client: buildKinesisClient(streamRole),
+		client: buildClient(streamName, streamRole),
 	}
 }
 
