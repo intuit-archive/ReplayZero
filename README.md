@@ -205,6 +205,16 @@ This project is written in Go, so you will need to [install the Go toolchain](ht
 * Running `make test` will run tests
 * Running `make coverage` will run tests, save the coverage, and then open your browser to the coverage report
 
+### Kinesalite
+
+For both streaming recording and telemtry messages, Replay Zero uses Amazon Kinesis. To test out Kinesis functionality locally, the tool [Kinesalite](https://github.com/mhart/kinesalite) provides a lightweight implementation that works well in a dev environment but can interact with the AWS Kinesis API's.
+
+If you'd like to test your own consumer of either Replay Zero streaming data or telemtry,
+1. Follow the Kinesalite docs to install then start it on `https://localhost:4567`
+2. When specifying the stream name for Replay Zero set the stream name to `kinesalite` and a special client will be constructed to connect to Kinesalite. Replay Zero will not try to assume an IAM role for credentials with this client.
+    * Stream name for HTTP data: `--stream-name` / `-s` flag
+    * Stream name for telemetry: `REPLAY_ZERO_TELEMETRY_STREAM` environment variable
+
 ## Contribution Guidelines
 
 See the .github/CONTRIBUTING.md file.
