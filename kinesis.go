@@ -1,8 +1,10 @@
 package main
 
 import (
+	"crypto/sha1"
 	"crypto/tls"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -82,24 +84,29 @@ func min(i1, i2 int) int {
 	return i2
 }
 
-func buildMessages(line string) ([]EventChunk, error) {
+func buildMessages(line string) []EventChunk {
 	chunks := chunkData(line, chunkSize)
 	numChunks := len(chunks)
 	messages := []EventChunk{}
 	eventUUID, err := uuid.NewV4()
+	var correlation string
 	if err != nil {
-		return messages, err
+		msg := fmt.Sprintf("UUID generation failed: %s\nFalling back to SHA1 of input string for chunk correlation", err)
+		logDebug(msg)
+		correlation = fmt.Sprintf("%x", sha1.Sum([]byte(line)))
+	} else {
+		correlation = eventUUID.String()
 	}
 	for chunkID, chunk := range chunks {
 		nextMessage := EventChunk{
 			ChunkNumber: chunkID,
 			NumChunks:   numChunks,
-			UUID:        eventUUID.String(),
+			UUID:        correlation,
 			Data:        chunk,
 		}
 		messages = append(messages, nextMessage)
 	}
-	return messages, nil
+	return messages
 }
 
 func sendToStream(message interface{}, stream string, client kinesisiface.KinesisAPI) error {

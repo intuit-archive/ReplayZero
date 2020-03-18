@@ -18,3 +18,5 @@ replay-nginx-agent
 *.feature
 *.scala
 bin
+
+.vscode

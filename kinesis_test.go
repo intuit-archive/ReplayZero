@@ -25,13 +25,20 @@ func TestChunk(t *testing.T) {
 }
 
 func TestGetRegionOverride(t *testing.T) {
-	err := os.Setenv("AWS_REGION", "foobar")
+	err := os.Setenv("AWS_REGION", "")
+	defaultName := getRegion()
+	expectedDefault := "us-west-2"
+	if defaultName != expectedDefault {
+		t.Errorf("Expected default region=%s, actual=%s", expectedDefault, defaultName)
+	}
+
+	err = os.Setenv("AWS_REGION", "foobar")
 	if err != nil {
-		t.Fatalf("Could not set env var: %v", err)
+		t.Errorf("Could not set env var: %v", err)
 	}
 	name := getRegion()
 	if name != "foobar" {
-		t.Fatalf("Stream name was %s", name)
+		t.Errorf("Stream name was %s", name)
 	}
 }
 
@@ -42,10 +49,7 @@ func TestBuildMessages(t *testing.T) {
 		UUID:        "",
 		Data:        "foobar",
 	}
-	messages, err := buildMessages("foobar")
-	if err != nil {
-		log.Fatalf("Error building Kinesis messages: %v", err)
-	}
+	messages := buildMessages("foobar")
 	if len(messages) != 1 {
 		log.Fatalf("Expected 1 message, got %d", len(messages))
 	}
@@ -53,6 +57,43 @@ func TestBuildMessages(t *testing.T) {
 	expected.UUID = first.UUID
 	if !reflect.DeepEqual(first, expected) {
 		log.Fatalf("Kinesis message is not the expected, got %v", first)
+	}
+}
+
+func TestSendToStreamMarshalError(t *testing.T) {
+	mockKinesis := &mockKinesisClient{}
+
+	// json.Marshal can't Marshal certain types, like channels
+	err := sendToStream(make(chan int), "test", mockKinesis)
+	if mockKinesis.timesCalled > 0 {
+		t.Error("Expected mock Kinesis client not to be called, but it was")
+	}
+	if err == nil {
+		t.Error("Expected an error, but got <nil>")
+	}
+}
+
+func TestSendToStreamKinesisError(t *testing.T) {
+	mockKinesis := &mockKinesisClient{}
+
+	err := sendToStream(`{"data": "test"}`, "simulate_error", mockKinesis)
+	if mockKinesis.timesCalled == 0 {
+		t.Error("Expected mock Kinesis client to be called, but it was NOT")
+	}
+	if err == nil {
+		t.Errorf("Expected error, but got <nil>")
+	}
+}
+
+func TestSendToStreamKinesisSuccess(t *testing.T) {
+	mockKinesis := &mockKinesisClient{}
+
+	err := sendToStream(`{"data": "test"}`, "test", mockKinesis)
+	if mockKinesis.timesCalled == 0 {
+		t.Error("Expected mock Kinesis client to be called, but it was NOT")
+	}
+	if err != nil {
+		t.Errorf("Expected no error, but got %s", err)
 	}
 }
 

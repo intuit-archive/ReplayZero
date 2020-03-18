@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"bytes"
 	"io"
-	"io/ioutil"
 	"log"
 	"testing"
 
@@ -12,42 +11,9 @@ import (
 	"github.com/kylelemons/godebug/diff"
 )
 
-// - - - - - - - - - - - - -
-//        UTILITIES
-// - - - - - - - - - - - - -
-
 func init() {
 	telemetry = &noopTelemetryAgent{}
 }
-
-var sampleEvent = HTTPEvent{
-	PairID:     "c1487b92-01a0-4b08-b66d-52c597e88e67",
-	HTTPMethod: "POST",
-	Endpoint:   "/test/api",
-	ReqHeaders: []Header{
-		Header{"User-Agent", "curl/7.54.0"},
-		Header{"Accept", "*/*"},
-		Header{"Content-Length", "22"},
-	},
-	ReqBody: "this is a test payload",
-	RespHeaders: []Header{
-		Header{"X-Real-Server", "test.server"},
-		Header{"Content-Length", "22"},
-		Header{"Date", "Date: Tue, 18 Feb 2020 20:42:12 GMT"},
-	},
-	RespBody:     "Test payload back atcha",
-	ResponseCode: "200",
-}
-
-// Writes all data to devNull & succeeds
-// https://golang.org/pkg/io/ioutil/#pkg-variables
-func emptyWriter(h *offlineHandler) io.Writer {
-	return ioutil.Discard
-}
-
-// - - - - - - - - - - - - -
-//          TESTS
-// - - - - - - - - - - - - -
 
 func TestOfflineHandleEventNoFlush(t *testing.T) {
 	handler := offlineHandler{

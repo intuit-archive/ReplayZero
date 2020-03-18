@@ -29,10 +29,7 @@ func getOnlineHandler(streamName, streamRole string) *onlineHandler {
 func (h *onlineHandler) handleEvent(line HTTPEvent) {
 	go telemetry.logUsage(telemetryUsageOnline)
 	lineStr := httpEventToString(line)
-	messages, err := buildMessages(lineStr)
-	if err != nil {
-		log.Println(err)
-	}
+	messages := buildMessages(lineStr)
 	for _, m := range messages {
 		log.Println("Sending event with UUID=" + m.UUID)
 		err := sendToStream(m, flags.streamName, h.client)
