@@ -40,12 +40,12 @@ func buildClient(streamName, streamRole string) *kinesis.Kinesis {
 	if streamName == kinesaliteStreamName {
 		return buildKinesaliteClient(streamName)
 	}
-	return buildKinesisClient(streamRole)
+	return buildKinesisClient(streamName, streamRole)
 }
 
 // Uses STS to assume an IAM role for credentials to write records
 // to a real Kinesis stream in AWS
-func buildKinesisClient(streamRole string) *kinesis.Kinesis {
+func buildKinesisClient(streamName, streamRole string) *kinesis.Kinesis {
 	log.Printf("Creating AWS Kinesis client")
 	userSession := session.Must(session.NewSession(&aws.Config{
 		CredentialsChainVerboseErrors: aws.Bool(verboseCredentialErrors),
@@ -56,11 +56,27 @@ func buildKinesisClient(streamRole string) *kinesis.Kinesis {
 	kinesisTempCreds := stscreds.NewCredentials(userSession, streamRole)
 	log.Println("Success!")
 
-	return kinesis.New(userSession, &aws.Config{
+	client := kinesis.New(userSession, &aws.Config{
 		CredentialsChainVerboseErrors: aws.Bool(verboseCredentialErrors),
 		Credentials:                   kinesisTempCreds,
 		Region:                        aws.String(getRegion()),
 	})
+
+	sseEnabled, err := streamHasSSE(streamName, client)
+	if err != nil {
+		// Note: %s "wraps" the original error
+		logErr(fmt.Errorf("Could not determine if SSE is enabled for stream %s: %s", streamName, err))
+	} else if !sseEnabled {
+		logWarn(fmt.Sprintf("Kinesis stream %s does NOT have Server-Side Encryption (SSE) enabled", streamName))
+	}
+	return client
+}
+
+func streamHasSSE(streamName string, client kinesisiface.KinesisAPI) (bool, error) {
+	streamInfo, err := client.DescribeStream(&kinesis.DescribeStreamInput{
+		StreamName: aws.String(streamName),
+	})
+	return *streamInfo.StreamDescription.EncryptionType == kinesis.EncryptionTypeKms, err
 }
 
 // Kinesalite is a lightweight implementation of Kinesis

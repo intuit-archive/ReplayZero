@@ -53,6 +53,12 @@ func logErr(err error) {
 	}
 }
 
+func logWarn(msg string) {
+	if flags.debug {
+		log.Printf("[WARN] %s\n", msg)
+	}
+}
+
 func logDebug(msg string) {
 	if flags.debug {
 		log.Printf("[DEBUG] %s\n", msg)
@@ -68,8 +74,8 @@ func readFlags() {
 	flag.BoolVar(&flags.debug, "debug", false, "Set logging to also print debug messages")
 	flag.IntVarP(&flags.batchSize, "batch-size", "b", 1, "Buffer events before writing out to a file")
 	flag.StringVarP(&flags.output, "output", "o", "karate", "Either [karate] or [gatling]")
-	flag.StringVarP(&flags.streamName, "streamName", "s", "", "AWS Kinesis Stream name (streaming mode only)")
-	flag.StringVarP(&flags.streamRoleArn, "streamRoleArn", "r", "", "AWS Kinesis Stream ARN (streaming mode only)")
+	flag.StringVarP(&flags.streamName, "stream-name", "s", "", "AWS Kinesis Stream name (streaming mode only)")
+	flag.StringVarP(&flags.streamRoleArn, "stream-role-arn", "r", "", "AWS Kinesis Stream ARN (streaming mode only)")
 	flag.Parse()
 
 	if flags.version {
