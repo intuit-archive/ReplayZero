@@ -1,7 +1,7 @@
 package main
 
 import (
-	"crypto/sha1"
+	"crypto/sha256"
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
@@ -108,7 +108,7 @@ func buildMessages(line string) []EventChunk {
 	if err != nil {
 		msg := fmt.Sprintf("UUID generation failed: %s\nFalling back to SHA1 of input string for chunk correlation", err)
 		logDebug(msg)
-		correlation = fmt.Sprintf("%x", sha1.Sum([]byte(line)))
+		correlation = fmt.Sprintf("%x", sha256.Sum256([]byte(line)))
 	} else {
 		correlation = eventUUID.String()
 	}
