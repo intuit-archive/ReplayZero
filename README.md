@@ -9,6 +9,8 @@
 
 A lightweight, localized interface to API recording and test generation. Automatically turn local web traffic from __*your application*__ into functional test scenarios. Replay Zero generates [Karate](https://intuit.github.io/karate/) scenarios by default, but the generation process utilizes a templating engine that allows extension to any HTTP-based test format.
 
+**NOTE:** Replay Zero may be a web proxy, but **DO NOT USE IN PRODUCTION... yet.** This tool was originally made specifically with a developer laptop as the target environment (this can be seen in sample flows below), and should only be viewed as a developer productivity / testing assistant for now.
+
 ## Quickstart
 
 ### How does it work
