@@ -8,7 +8,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -38,7 +37,7 @@ func getRegion() string {
 }
 
 func buildClient(streamName, streamRole string) *kinesis.Kinesis {
-	if strings.HasPrefix(streamRole, kinesaliteStreamName) {
+	if streamName == kinesaliteStreamName {
 		return buildKinesaliteClient(streamName)
 	}
 	return buildKinesisClient(streamRole)
