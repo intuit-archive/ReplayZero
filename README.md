@@ -9,6 +9,8 @@
 
 A lightweight, localized interface to API recording and test generation. Automatically turn local web traffic from __*your application*__ into functional test scenarios. Replay Zero generates [Karate](https://intuit.github.io/karate/) scenarios by default, but the generation process utilizes a templating engine that allows extension to any HTTP-based test format.
 
+**NOTE:** Replay Zero may be a web proxy, but **DO NOT USE IN PRODUCTION... yet.** This tool was originally made specifically with a developer laptop as the target environment (this can be seen in sample flows below), and should only be viewed as a developer productivity / testing assistant for now.
+
 ## Quickstart
 
 ### How does it work
@@ -49,8 +51,16 @@ Instead of saving events locally, Replay Zero can also stream recorded request/r
 To enable streaming mode
 1. Have valid AWS credentials for your Kinesis stream in either environment variables or a shared credentials file (see FAQ below for more)
 2. Pass in values to the following flags
-   * `--streamName`
-   * `--streamRoleArn`
+   * `-s` / `--stream-name` - name of Kinesis stream
+   * `-r` / `--stream-role-arn` - full IAM role ARN (`arn:aws:iam::<account>:role/...`) for a role that must allow at least the `kinesis:PutRecord` and `kinesis:DescribeStream` actions
+
+### Security
+
+The AWS SDK provides in-transit encryption for API transactions (like the Kinesis `PutRecord` API used to send telemetry). However, Kinesis messages are by default unencrypted at rest while waiting to be consumed from the stream (24 hours by default). Kinesis does offer Server-Side Encryption (SSE) which can be enabled with a default or custom KMS master key.
+
+We recommend enabling Kinesis SSE so that your recorded traffic will not be visible until it is consumed by whatever Kinesis consumer you implement. When provided a valid stream name and IAM role, Replay Zero will call the `kinesis:DescribeStream` API and log a warning if SSE is disabled for that stream (but will still record + send data to the stream).
+
+See the AWS docs on [Kinesis SSE](https://docs.aws.amazon.com/streams/latest/dev/getting-started-with-sse.html) to learn more.
 
 ## Additional Features
 
@@ -184,9 +194,20 @@ A: Check that either
 
 ## Telemetry
 
-This tool supports sending usage metrics to an HTTP endpoint, but this is **completely disabled** in the open source repo - there's no URL set to send data to. If you want to use this for internal reporting, set the environment variable `REPLAY_ZERO_TELEMETRY_ENDPOINT`.
+This tool supports sending usage metrics to an [Amazon Kinesis data stream](https://aws.amazon.com/kinesis/data-streams/), but this is **completely disabled** in the open source repo - there's no URL set to send data to. If you want to use this for internal reporting, set the environment variables
+
+* `REPLAY_ZERO_TELEMETRY_STREAM` (stream name)
+* `REPLAY_ZERO_TELEMETRY_ROLE` (IAM role to assume credentials for writing to the stream)
 
 The code for this is in [`telemetry.go`](./telemetry.go) - take a look if you're curious or concerned.
+
+### Security
+
+The AWS SDK provides in-transit encryption for API transactions (like the Kinesis `PutRecord` API used to send telemetry). However, Kinesis messages are by default unencrypted at rest while waiting to be consumed from the stream (24 hours by default). Kinesis does offer Server-Side Encryption (SSE) which can be enabled with a default or custom KMS master key.
+
+We recommend enabling Kinesis SSE so that your telemetry logs will not be visible until it is consumed by whatever Kinesis consumer you implement. When provided a valid stream name and IAM role, Replay Zero will call the `kinesis:DescribeStream` API and log a warning if SSE is disabled for that stream (but will still record + send data to the stream).
+
+See the AWS docs on [Kinesis SSE](https://docs.aws.amazon.com/streams/latest/dev/getting-started-with-sse.html) to learn more.
 
 ## Developing
 
@@ -195,6 +216,16 @@ This project is written in Go, so you will need to [install the Go toolchain](ht
 * Running `make` will build the tool for Mac, Linux, and Windows.
 * Running `make test` will run tests
 * Running `make coverage` will run tests, save the coverage, and then open your browser to the coverage report
+
+### Kinesalite
+
+For both streaming recording and telemetry messages, Replay Zero uses Amazon Kinesis. To test out Kinesis functionality locally, the tool [Kinesalite](https://github.com/mhart/kinesalite) provides a lightweight implementation that works well in a dev environment but can interact with the AWS Kinesis API's.
+
+If you'd like to test your own consumer of either Replay Zero streaming data or telemtry,
+1. Follow the Kinesalite docs to install then start it on `https://localhost:4567`
+2. When specifying the stream name for Replay Zero set the stream name to `replay-zero-dev` and a special client will be constructed to connect to Kinesalite. Replay Zero will not try to assume an IAM role for credentials with this client.
+    * Stream name for HTTP data: `-s` / `--stream-name` flag
+    * Stream name for telemetry: `REPLAY_ZERO_TELEMETRY_STREAM` environment variable
 
 ## Contribution Guidelines
 

@@ -18,34 +18,28 @@ import (
 )
 
 const (
-	streamRoleArn = ""
-	streamName    = ""
-	defaultRegion = "us-west-2"
-
-	messageSource  = "event_json"
-	messageVersion = 4
-
-	chunkSize = 1048576 - 200
-
 	verboseCredentialErrors = true
 )
 
-// Version is injected at build time via the '-X' linker flag
-// https://golang.org/cmd/link/#hdr-Command_Line
-var Version string
+var (
+	// Version is injected at build time via the '-X' linker flag
+	// https://golang.org/cmd/link/#hdr-Command_Line
+	Version string
 
-var flags struct {
-	version           bool
-	listenPort        int
-	defaultTargetPort int
-	batchSize         int
-	output            string
-	debug             bool
-	streamRoleArn     string
-	streamName        string
-}
+	flags struct {
+		version           bool
+		listenPort        int
+		defaultTargetPort int
+		batchSize         int
+		output            string
+		debug             bool
+		streamRoleArn     string
+		streamName        string
+	}
 
-var client = &http.Client{}
+	client    = &http.Client{}
+	telemetry telemetryAgent
+)
 
 func check(err error) {
 	if err != nil {
@@ -56,6 +50,12 @@ func check(err error) {
 func logErr(err error) {
 	if err != nil {
 		log.Println(err)
+	}
+}
+
+func logWarn(msg string) {
+	if flags.debug {
+		log.Printf("[WARN] %s\n", msg)
 	}
 }
 
@@ -74,8 +74,8 @@ func readFlags() {
 	flag.BoolVar(&flags.debug, "debug", false, "Set logging to also print debug messages")
 	flag.IntVarP(&flags.batchSize, "batch-size", "b", 1, "Buffer events before writing out to a file")
 	flag.StringVarP(&flags.output, "output", "o", "karate", "Either [karate] or [gatling]")
-	flag.StringVarP(&flags.streamName, "streamName", "s", "", "AWS Kinesis Stream name (streaming mode only)")
-	flag.StringVarP(&flags.streamRoleArn, "streamRoleArn", "r", "", "AWS Kinesis Stream ARN (streaming mode only)")
+	flag.StringVarP(&flags.streamName, "stream-name", "s", "", "AWS Kinesis Stream name (streaming mode only)")
+	flag.StringVarP(&flags.streamRoleArn, "stream-role-arn", "r", "", "AWS Kinesis Stream ARN (streaming mode only)")
 	flag.Parse()
 
 	if flags.version {
@@ -109,16 +109,6 @@ func getFormat(output string) outputFormat {
 			template:  templates.KarateBase,
 			extension: "feature",
 		}
-	}
-}
-
-func getOfflineHandler(output string) eventHandler {
-	return &offlineHandler{
-		format:           getFormat(output),
-		defaultBatchSize: flags.batchSize,
-		currentBatchSize: flags.batchSize,
-		writerFactory:    getFileWriter,
-		templateFuncMap:  templates.DefaultFuncMap(),
 	}
 }
 
@@ -185,7 +175,8 @@ func createServerHandler(h eventHandler) func(http.ResponseWriter, *http.Request
 }
 
 func main() {
-	go logUsage(telemetryUsageOpen)
+	telemetry = getTelemetryAgent()
+	go telemetry.logUsage(telemetryUsageOpen)
 	readFlags()
 
 	var h eventHandler
@@ -195,7 +186,7 @@ func main() {
 			os.Exit(1)
 		}
 		log.Println("Running ONLINE, sending recorded events to Kinesis")
-		h = getKinesisWrapper()
+		h = getOnlineHandler(flags.streamName, flags.streamRoleArn)
 	} else {
 		log.Printf("Running OFFLINE, writing out events to %s files\n", flags.output)
 		h = getOfflineHandler(flags.output)

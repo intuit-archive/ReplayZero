@@ -1,8 +1,10 @@
 package main
 
 import (
+	"crypto/sha256"
 	"crypto/tls"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -13,116 +15,86 @@ import (
 	"github.com/aws/aws-sdk-go/aws/credentials/stscreds"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/kinesis"
+	"github.com/aws/aws-sdk-go/service/kinesis/kinesisiface"
 	uuid "github.com/nu7hatch/gouuid"
 )
 
-// KinesisMessage is the JSON format that Request Processor initially expects
-type KinesisMessage struct {
-	Version int        `json:"version"`
-	Source  string     `json:"source"`
-	Event   EventChunk `json:"event"`
-}
+const (
+	defaultRegion        = "us-west-2"
+	chunkSize            = 1048576 - 200
+	kinesaliteStreamName = "replay-zero-dev"
+	kinesaliteEndpoint   = "https://localhost:4567"
+)
 
-// EventChunk contains raw event data + metadata if chunking a large event
-type EventChunk struct {
-	ChunkNumber int    `json:"chunkNumber"`
-	NumChunks   int    `json:"numberOfChunks"`
-	Asset       string `json:"offering"`
-	Environment string `json:"environment"`
-	UUID        string `json:"uuid"`
-	Data        string `json:"data"`
-	IsUpstream  bool   `json:"upstream"`
-}
-
-type kinesisWrapperHandler struct {
-	client *kinesis.Kinesis
-}
-
-// Serves 2 purposes:
-//   1. Allows for dev override with env var
-//   2. If falling back to default, const value is not addressable
-// 		but AWS SDK needs a string pointer (*string vs. string)
-func getStreamName() *string {
-	var name string
-	if os.Getenv("STREAM_NAME") != "" {
-		name = os.Getenv("STREAM_NAME")
-	} else {
-		name = streamName
-	}
-	return &name
-}
-
-func getRegion() *string {
+func getRegion() string {
 	var region string
 	if os.Getenv("AWS_REGION") != "" {
 		region = os.Getenv("AWS_REGION")
 	} else {
 		region = defaultRegion
 	}
-	return &region
+	return region
 }
 
-func getVerboseCredentialErrors() *bool {
-	copy := verboseCredentialErrors
-	return &copy
+func buildClient(streamName, streamRole string) *kinesis.Kinesis {
+	if streamName == kinesaliteStreamName {
+		return buildKinesaliteClient(streamName)
+	}
+	return buildKinesisClient(streamName, streamRole)
 }
 
-func getKinesisWrapper() *kinesisWrapperHandler {
+// Uses STS to assume an IAM role for credentials to write records
+// to a real Kinesis stream in AWS
+func buildKinesisClient(streamName, streamRole string) *kinesis.Kinesis {
+	log.Printf("Creating AWS Kinesis client")
 	userSession := session.Must(session.NewSession(&aws.Config{
-		CredentialsChainVerboseErrors: getVerboseCredentialErrors(),
-		Region:                        getRegion(),
+		CredentialsChainVerboseErrors: aws.Bool(verboseCredentialErrors),
+		Region:                        aws.String(getRegion()),
 	}))
-	var kclient *kinesis.Kinesis
-	log.Printf("Creating Kinesis client")
-	// Allows for dev override
-	endpoint := os.Getenv("STREAM_ENDPOINT")
-	if endpoint != "" {
-		log.Printf("Sending unverified traffic to stream endpoint=" + endpoint)
-		kclient = kinesis.New(userSession, &aws.Config{
-			Endpoint:    &endpoint,
-			Credentials: credentials.NewStaticCredentials("x", "x", "x"),
-			Region:      getRegion(),
-			HTTPClient: &http.Client{
-				Transport: &http.Transport{
-					TLSClientConfig: &tls.Config{
-						InsecureSkipVerify: true},
-				}},
-		})
-	} else {
-		log.Println("Fetching temp credentials...")
-		kinesisTempCreds := stscreds.NewCredentials(userSession, streamRoleArn)
-		log.Println("Success!")
-		kclient = kinesis.New(userSession, &aws.Config{
-			CredentialsChainVerboseErrors: getVerboseCredentialErrors(),
-			Credentials:                   kinesisTempCreds,
-			Region:                        getRegion(),
-		})
-	}
-	return &kinesisWrapperHandler{
-		client: kclient,
-	}
-}
 
-func (h *kinesisWrapperHandler) handleEvent(line HTTPEvent) {
-	lineStr := httpEventToString(line)
-	messages, err := buildMessages(lineStr)
+	log.Println("Fetching temp credentials...")
+	kinesisTempCreds := stscreds.NewCredentials(userSession, streamRole)
+	log.Println("Success!")
+
+	client := kinesis.New(userSession, &aws.Config{
+		CredentialsChainVerboseErrors: aws.Bool(verboseCredentialErrors),
+		Credentials:                   kinesisTempCreds,
+		Region:                        aws.String(getRegion()),
+	})
+
+	sseEnabled, err := streamHasSSE(streamName, client)
 	if err != nil {
-		log.Println(err)
+		// Note: %s "wraps" the original error
+		logErr(fmt.Errorf("Could not determine if SSE is enabled for stream %s: %s", streamName, err))
+	} else if !sseEnabled {
+		logWarn(fmt.Sprintf("Kinesis stream %s does NOT have Server-Side Encryption (SSE) enabled", streamName))
 	}
-	for _, m := range messages {
-		err := sendToStream(m, h.client)
-		if err != nil {
-			log.Println(err)
-		}
-	}
-	go logUsage(telemetryUsageOnline)
+	return client
 }
 
-func min(i1, i2 int) int {
-	if i1 < i2 {
-		return i1
-	}
-	return i2
+func streamHasSSE(streamName string, client kinesisiface.KinesisAPI) (bool, error) {
+	streamInfo, err := client.DescribeStream(&kinesis.DescribeStreamInput{
+		StreamName: aws.String(streamName),
+	})
+	return *streamInfo.StreamDescription.EncryptionType == kinesis.EncryptionTypeKms, err
+}
+
+// Kinesalite is a lightweight implementation of Kinesis
+// useful for development scenarios.
+// https://github.com/mhart/kinesalite
+func buildKinesaliteClient(streamName string) *kinesis.Kinesis {
+	log.Printf("Creating local Kinesalite client")
+	log.Printf("Sending unverified traffic to stream endpoint=" + kinesaliteEndpoint)
+	return kinesis.New(session.Must(session.NewSession()), &aws.Config{
+		Endpoint:    aws.String(kinesaliteEndpoint),
+		Credentials: credentials.NewStaticCredentials("x", "x", "x"),
+		Region:      aws.String(getRegion()),
+		HTTPClient: &http.Client{
+			Transport: &http.Transport{
+				TLSClientConfig: &tls.Config{
+					InsecureSkipVerify: true},
+			}},
+	})
 }
 
 func chunkData(data string, size int) []string {
@@ -134,40 +106,47 @@ func chunkData(data string, size int) []string {
 	return chunks
 }
 
-func buildMessages(line string) ([]KinesisMessage, error) {
+func min(i1, i2 int) int {
+	if i1 < i2 {
+		return i1
+	}
+	return i2
+}
+
+func buildMessages(line string) []EventChunk {
 	chunks := chunkData(line, chunkSize)
 	numChunks := len(chunks)
-	messages := []KinesisMessage{}
+	messages := []EventChunk{}
+	// Multiple chunks need a sort of "group ID"
 	eventUUID, err := uuid.NewV4()
+	var correlation string
 	if err != nil {
-		return messages, err
+		msg := fmt.Sprintf("UUID generation failed: %s\nFalling back to SHA1 of input string for chunk correlation", err)
+		logDebug(msg)
+		correlation = fmt.Sprintf("%x", sha256.Sum256([]byte(line)))
+	} else {
+		correlation = eventUUID.String()
 	}
 	for chunkID, chunk := range chunks {
-		nextMessage := KinesisMessage{
-			Version: messageVersion,
-			Source:  messageSource,
-			Event: EventChunk{
-				ChunkNumber: chunkID,
-				NumChunks:   numChunks,
-				UUID:        eventUUID.String(),
-				Data:        chunk,
-				IsUpstream:  true,
-			},
+		nextMessage := EventChunk{
+			ChunkNumber: chunkID,
+			NumChunks:   numChunks,
+			UUID:        correlation,
+			Data:        chunk,
 		}
 		messages = append(messages, nextMessage)
 	}
-	return messages, nil
+	return messages
 }
 
-func sendToStream(message KinesisMessage, client *kinesis.Kinesis) error {
+func sendToStream(message interface{}, stream string, client kinesisiface.KinesisAPI) error {
 	dataBytes, err := json.Marshal(message)
 	if err != nil {
 		return err
 	}
-	log.Println("Sending event with UUID=" + message.Event.UUID)
 	partition := "replay-partition-key-" + time.Now().String()
 	response, err := client.PutRecord(&kinesis.PutRecordInput{
-		StreamName:   getStreamName(),
+		StreamName:   aws.String(stream),
 		Data:         dataBytes,
 		PartitionKey: &partition,
 	})
@@ -177,6 +156,3 @@ func sendToStream(message KinesisMessage, client *kinesis.Kinesis) error {
 	log.Printf("%+v\n", response)
 	return nil
 }
-
-// Kinesis: No-op as this handler doesn't buffer anything
-func (h *kinesisWrapperHandler) flushBuffer() {}

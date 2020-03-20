@@ -9,6 +9,8 @@ import (
 	"strconv"
 	"strings"
 	"text/template"
+
+	"github.com/intuit/replay-zero/templates"
 )
 
 const (
@@ -32,7 +34,18 @@ type offlineHandler struct {
 	templateFuncMap  template.FuncMap
 }
 
+func getOfflineHandler(output string) eventHandler {
+	return &offlineHandler{
+		format:           getFormat(output),
+		defaultBatchSize: flags.batchSize,
+		currentBatchSize: flags.batchSize,
+		writerFactory:    getFileWriter,
+		templateFuncMap:  templates.DefaultFuncMap(),
+	}
+}
+
 func (h *offlineHandler) handleEvent(logEvent HTTPEvent) {
+	go telemetry.logUsage(telemetryUsageOffline)
 	logEvent.ReqHeaders = h.readReplayHeaders(logEvent.ReqHeaders)
 	h.buffer = append(h.buffer, logEvent)
 
