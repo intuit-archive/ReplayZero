@@ -40,10 +40,7 @@ vet:
 
 .PHONY: lint
 lint:
-	@echo "golint $(LINTARGS)"
-	@for pkg in $(shell go list ./...) ; do \
-		golint $(LINTARGS) $$pkg ; \
-	done
+	@ golangci-lint run --fast
 
 .PHONY: cover
 cover:
