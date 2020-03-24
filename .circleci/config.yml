@@ -9,13 +9,13 @@ jobs:
       - checkout
       - run: curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.23.6
       - run: make
+
   release:
     docker:
       - image: cimg/base:2020.01
     steps:
       steps:
       - checkout
-      - run: >
       - run: curl -vkL -o - https://github.com/intuit/auto/releases/download/v9.21.0/auto-linux.gz | gunzip > ~/auto
       - run: chmod a+x ~/auto
       - run: ~/auto shipit
