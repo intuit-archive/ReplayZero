@@ -26,6 +26,9 @@ func TestChunk(t *testing.T) {
 
 func TestGetRegionOverride(t *testing.T) {
 	err := os.Setenv("AWS_REGION", "")
+	if err != nil {
+		t.Fatalf("Could not set environment variable for test: %v\n", err)
+	}
 	defaultName := getRegion()
 	expectedDefault := "us-west-2"
 	if defaultName != expectedDefault {

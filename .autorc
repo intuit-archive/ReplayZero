@@ -1,0 +1,18 @@
+{
+  "plugins": [
+    "git-tag",
+    "released",
+    [
+      "exec",
+      {
+        "afterVersion": "RELEASE_TAG=`git describe --tags --abbrev=0` make package"
+      }
+    ],
+    [
+      "upload-assets",
+      [
+        "bin/*.zip"
+      ]
+    ]
+  ]
+}

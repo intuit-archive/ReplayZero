@@ -211,8 +211,12 @@ See the AWS docs on [Kinesis SSE](https://docs.aws.amazon.com/streams/latest/dev
 
 ## Developing
 
-This project is written in Go, so you will need to [install the Go toolchain](https://golang.org/doc/install) to build this project for development.
+### Requirements
 
+* [Go 1.13.x](https://golang.org/doc/install)
+* [golangci-lint](https://github.com/golangci/golangci-lint#install) for linting + static analysis
+
+### Basics
 * Running `make` will build the tool for Mac, Linux, and Windows.
 * Running `make test` will run tests
 * Running `make coverage` will run tests, save the coverage, and then open your browser to the coverage report

@@ -160,7 +160,15 @@ func createServerHandler(h eventHandler) func(http.ResponseWriter, *http.Request
 		wr.WriteHeader(response.StatusCode)
 		defer response.Body.Close()
 		originalRespBody, err := ioutil.ReadAll(response.Body)
-		io.Copy(wr, strings.NewReader(string(originalRespBody)))
+		if err != nil {
+			log.Printf("[ERROR] Could not read response body: %v\n", err)
+			return
+		}
+		_, err = io.Copy(wr, strings.NewReader(string(originalRespBody)))
+		if err != nil {
+			log.Printf("[ERROR] Could not create copy of response body: %v\n", err)
+			return
+		}
 		originalRespBodyString := string(originalRespBody)
 		// 4. Parse request + response data and pass on to event handler
 		event, err := convertRequestResponse(request, response, originalBodyString, originalRespBodyString)
