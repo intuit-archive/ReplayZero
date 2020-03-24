@@ -14,7 +14,6 @@ jobs:
     docker:
       - image: cimg/base:2020.01
     steps:
-      steps:
       - checkout
       - run: curl -vkL -o - https://github.com/intuit/auto/releases/download/v9.21.0/auto-linux.gz | gunzip > ~/auto
       - run: chmod a+x ~/auto
