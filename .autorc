@@ -1,4 +1,6 @@
 {
+  "name": "Will Tait",
+  "email": "wtait1@mac.com",
   "plugins": [
     "git-tag",
     "released",
