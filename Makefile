@@ -12,7 +12,7 @@ REPLAYOSX := ./bin/replay-zero-osx
 REPLAYWIN := ./bin/replay-zero.exe
 
 .PHONY: all
-all: clean vet lint $(REPLAY) $(REPLAYOSX) $(REPLAYWIN) test
+all: clean lint $(REPLAY) $(REPLAYOSX) $(REPLAYWIN) test
 
 $(REPLAY):
 	GOOS=linux go build -mod=vendor $(GO_LDFLAGS) $(BUILDARGS) -o $@ .
@@ -28,19 +28,13 @@ vendor:
 	go mod tidy
 	go mod vendor
 
-.PHONY: test
-test:
-	go test -mod=vendor -timeout=30s $(TESTARGS) ./...
-	@$(MAKE) vet
-	@if [ -z "${CODEBUILD_BUILD_ID}" ]; then $(MAKE) lint; fi
-
-.PHONY: vet
-vet:
-	go vet -mod=vendor $(VETARGS) ./...
-
 .PHONY: lint
 lint:
 	@ golangci-lint run --fast
+
+.PHONY: test
+test:
+	go test -mod=vendor -timeout=30s $(TESTARGS) ./...
 
 .PHONY: cover
 cover:
@@ -54,15 +48,6 @@ clean:
 
 .PHONY: package
 package: all
-	zip -j bin/replay-zero.zip $(REPLAY)
-	zip -j bin/replay-zero-osx.zip $(REPLAYOSX)
-	zip -j bin/replay-zero-win.zip $(REPLAYWIN)
-	shasum -a 256 bin/replay-zero.zip > bin/replay-zero.sha256
-	shasum -a 256 bin/replay-zero-osx.zip > bin/replay-zero-osx.sha256
-	shasum -a 256 bin/replay-zero-win.zip > bin/replay-zero-win.sha256
-
-.PHONY: package-lite
-package: $(REPLAY) $(REPLAYOSX) $(REPLAYWIN)
 	zip -j bin/replay-zero.zip $(REPLAY)
 	zip -j bin/replay-zero-osx.zip $(REPLAYOSX)
 	zip -j bin/replay-zero-win.zip $(REPLAYWIN)
