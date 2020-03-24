@@ -7,7 +7,7 @@
     [
       "exec",
       {
-        "afterVersion": "RELEASE_TAG=`git describe --tags --abbrev=0` make package"
+        "afterVersion": "RELEASE_TAG=`git describe --tags --abbrev=0` make package-lite"
       }
     ],
     [
