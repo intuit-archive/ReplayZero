@@ -60,3 +60,12 @@ package: all
 	shasum -a 256 bin/replay-zero.zip > bin/replay-zero.sha256
 	shasum -a 256 bin/replay-zero-osx.zip > bin/replay-zero-osx.sha256
 	shasum -a 256 bin/replay-zero-win.zip > bin/replay-zero-win.sha256
+
+.PHONY: package-lite
+package: $(REPLAY) $(REPLAYOSX) $(REPLAYWIN)
+	zip -j bin/replay-zero.zip $(REPLAY)
+	zip -j bin/replay-zero-osx.zip $(REPLAYOSX)
+	zip -j bin/replay-zero-win.zip $(REPLAYWIN)
+	shasum -a 256 bin/replay-zero.zip > bin/replay-zero.sha256
+	shasum -a 256 bin/replay-zero-osx.zip > bin/replay-zero-osx.sha256
+	shasum -a 256 bin/replay-zero-win.zip > bin/replay-zero-win.sha256
