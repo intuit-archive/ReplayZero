@@ -17,12 +17,11 @@ Before starting work, please check the [issues](https://github.com/intuit/replay
 ## Development flow
 
 1. Fork the repo
-1. Build the Go binary with `go build`
-1. Build the Docker image with `./scripts/build.sh`
-1. Make modifications
-1. Ensure all code matches the "Code Expectations" discussed below
-1. Commit and push your code to your fork
-1. Open a pull request
+2. Make modifications
+3. Run tests + linting and build the Go binary with `make`
+4. Ensure all code matches the "Code Expectations" discussed below
+5. Commit and push your code to your fork
+6. Open a pull request
 
 ## Code Expectations
 
