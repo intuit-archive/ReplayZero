@@ -80,3 +80,6 @@ func (m *mockKinesisClient) PutRecord(inp *kinesis.PutRecordInput) (*kinesis.Put
 func emptyWriter(h *offlineHandler) io.Writer {
 	return ioutil.Discard
 }
+
+// Accepts a log message and does nothing with it
+func nopLog(msg string, v ...interface{}) {}

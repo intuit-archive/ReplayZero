@@ -2,8 +2,6 @@ package main
 
 import (
 	"log"
-
-	"github.com/aws/aws-sdk-go/service/kinesis/kinesisiface"
 )
 
 // EventChunk contains raw event data + metadata if chunking a large event
@@ -16,13 +14,13 @@ type EventChunk struct {
 
 type onlineHandler struct {
 	kinesisStreamName string
-	client            kinesisiface.KinesisAPI
+	kinesisHandle     *kinesisWrapper
 }
 
 func getOnlineHandler(streamName, streamRole string) *onlineHandler {
 	return &onlineHandler{
 		kinesisStreamName: streamName,
-		client:            buildClient(streamName, streamRole),
+		kinesisHandle:     buildClient(streamName, streamRole, log.Printf),
 	}
 }
 
@@ -32,7 +30,7 @@ func (h *onlineHandler) handleEvent(line HTTPEvent) {
 	messages := buildMessages(lineStr)
 	for _, m := range messages {
 		log.Println("Sending event with UUID=" + m.UUID)
-		err := sendToStream(m, flags.streamName, h.client)
+		err := h.kinesisHandle.sendToStream(m, flags.streamName)
 		if err != nil {
 			log.Println(err)
 		}

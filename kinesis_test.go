@@ -65,9 +65,10 @@ func TestBuildMessages(t *testing.T) {
 
 func TestSendToStreamMarshalError(t *testing.T) {
 	mockKinesis := &mockKinesisClient{}
+	wrapper := &kinesisWrapper{client: mockKinesis}
 
 	// json.Marshal can't Marshal certain types, like channels
-	err := sendToStream(make(chan int), "test", mockKinesis)
+	err := wrapper.sendToStream(make(chan int), "test")
 	if mockKinesis.timesCalled > 0 {
 		t.Error("Expected mock Kinesis client not to be called, but it was")
 	}
@@ -78,8 +79,9 @@ func TestSendToStreamMarshalError(t *testing.T) {
 
 func TestSendToStreamKinesisError(t *testing.T) {
 	mockKinesis := &mockKinesisClient{}
+	wrapper := &kinesisWrapper{client: mockKinesis}
 
-	err := sendToStream(`{"data": "test"}`, "simulate_error", mockKinesis)
+	err := wrapper.sendToStream(`{"data": "test"}`, "simulate_error")
 	if mockKinesis.timesCalled == 0 {
 		t.Error("Expected mock Kinesis client to be called, but it was NOT")
 	}
@@ -90,8 +92,12 @@ func TestSendToStreamKinesisError(t *testing.T) {
 
 func TestSendToStreamKinesisSuccess(t *testing.T) {
 	mockKinesis := &mockKinesisClient{}
+	wrapper := &kinesisWrapper{
+		client: mockKinesis,
+		logger: nopLog,
+	}
 
-	err := sendToStream(`{"data": "test"}`, "test", mockKinesis)
+	err := wrapper.sendToStream(`{"data": "test"}`, "test")
 	if mockKinesis.timesCalled == 0 {
 		t.Error("Expected mock Kinesis client to be called, but it was NOT")
 	}
