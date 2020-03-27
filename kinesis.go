@@ -173,6 +173,6 @@ func (c *kinesisWrapper) sendToStream(message interface{}, stream string) error 
 	if err != nil {
 		return err
 	}
-	c.logger("%+v\n", response)
+	c.logger("Successfully put record to stream=%s\n%+v\n", stream, response)
 	return nil
 }
