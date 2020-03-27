@@ -45,6 +45,26 @@ func TestGetRegionOverride(t *testing.T) {
 	}
 }
 
+func TestStreamHasSSEError(t *testing.T) {
+	mockKinesis := &mockKinesisClient{}
+
+	hasSSE, err := streamHasSSE("simulate_empty_response", mockKinesis)
+	if err == nil {
+		t.Errorf("Expected error, but got <nil>")
+	}
+	if hasSSE {
+		t.Errorf("Expected 'hasSSE' == FALSE, but was TRUE")
+	}
+
+	hasSSE, err = streamHasSSE("success", mockKinesis)
+	if err != nil {
+		t.Errorf("Expected no error, but got %s", err)
+	}
+	if !hasSSE {
+		t.Errorf("Expected 'hasSSE' == TRUE, but was FALSE")
+	}
+}
+
 func TestBuildMessages(t *testing.T) {
 	expected := EventChunk{
 		ChunkNumber: 0,

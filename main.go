@@ -59,7 +59,7 @@ func logWarn(msg string, v ...interface{}) {
 
 func logDebug(msg string, v ...interface{}) {
 	if flags.debug {
-		log.Printf("[WARN] "+msg+"\n", v)
+		log.Printf("[DEBUG] "+msg+"\n", v)
 	}
 }
 

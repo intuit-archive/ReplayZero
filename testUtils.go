@@ -58,12 +58,26 @@ type mockKinesisClient struct {
 	kinesisiface.KinesisAPI
 }
 
+func (m *mockKinesisClient) DescribeStream(inp *kinesis.DescribeStreamInput) (*kinesis.DescribeStreamOutput, error) {
+	m.timesCalled++
+	if *inp.StreamName == "simulate_empty_response" {
+		return &kinesis.DescribeStreamOutput{}, nil
+	} else {
+		return &kinesis.DescribeStreamOutput{
+			StreamDescription: &kinesis.StreamDescription{
+				StreamName:     aws.String("test-stream"),
+				EncryptionType: aws.String(kinesis.EncryptionTypeKms),
+			},
+		}, nil
+	}
+}
+
 func (m *mockKinesisClient) PutRecord(inp *kinesis.PutRecordInput) (*kinesis.PutRecordOutput, error) {
 	m.timesCalled++
 	// Used to deterministically simulate an error in the AWS SDK
 	// See `TestSendToStreamKinesisError` for usage
 	if *inp.StreamName == "simulate_error" {
-		return &kinesis.PutRecordOutput{}, fmt.Errorf("simulated error")
+		return &kinesis.PutRecordOutput{}, fmt.Errorf("simulated service error")
 	}
 	return &kinesis.PutRecordOutput{
 		SequenceNumber: aws.String("a"),

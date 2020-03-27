@@ -72,8 +72,9 @@ func buildKinesisClient(streamName, streamRole string, logFunc func(string, ...i
 
 	sseEnabled, err := streamHasSSE(streamName, kinesisHandle)
 	if err != nil {
-		logFunc("Could not determine if SSE is enabled for stream %s: %s", streamName, err)
-	} else if !sseEnabled {
+		logFunc(err.Error())
+	}
+	if !sseEnabled {
 		logWarn(fmt.Sprintf("Kinesis stream %s does NOT have Server-Side Encryption (SSE) enabled", streamName))
 	}
 	return &kinesisWrapper{
@@ -86,6 +87,10 @@ func streamHasSSE(streamName string, client kinesisiface.KinesisAPI) (bool, erro
 	streamInfo, err := client.DescribeStream(&kinesis.DescribeStreamInput{
 		StreamName: aws.String(streamName),
 	})
+	if streamInfo == nil || streamInfo.StreamDescription == nil {
+		return false, fmt.Errorf("Could not determine if SSE is enabled for stream %s: %w", streamName, err)
+	}
+
 	return *streamInfo.StreamDescription.EncryptionType == kinesis.EncryptionTypeKms, err
 }
 
