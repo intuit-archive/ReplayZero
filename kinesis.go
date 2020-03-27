@@ -54,15 +54,15 @@ func buildClient(streamName, streamRole string, logFunc func(string, ...interfac
 // Uses STS to assume an IAM role for credentials to write records
 // to a real Kinesis stream in AWS
 func buildKinesisClient(streamName, streamRole string, logFunc func(string, ...interface{})) *kinesisWrapper {
-	log.Printf("Creating AWS Kinesis client")
+	logFunc("Creating AWS Kinesis client (stream=%s)", streamName)
 	userSession := session.Must(session.NewSession(&aws.Config{
 		CredentialsChainVerboseErrors: aws.Bool(verboseCredentialErrors),
 		Region:                        aws.String(getRegion()),
 	}))
 
-	log.Println("Fetching temp credentials...")
+	logFunc("Fetching temp credentials...")
 	kinesisTempCreds := stscreds.NewCredentials(userSession, streamRole)
-	log.Println("Success!")
+	logFunc("Success!")
 
 	kinesisHandle := kinesis.New(userSession, &aws.Config{
 		CredentialsChainVerboseErrors: aws.Bool(verboseCredentialErrors),
@@ -75,7 +75,7 @@ func buildKinesisClient(streamName, streamRole string, logFunc func(string, ...i
 		logFunc(err.Error())
 	}
 	if !sseEnabled {
-		logWarn(fmt.Sprintf("Kinesis stream %s does NOT have Server-Side Encryption (SSE) enabled", streamName))
+		logWarn(fmt.Sprintf("Kinesis stream '%s' does NOT have Server-Side Encryption (SSE) enabled", streamName))
 	}
 	return &kinesisWrapper{
 		client: kinesisHandle,
