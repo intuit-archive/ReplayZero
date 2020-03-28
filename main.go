@@ -55,7 +55,8 @@ func logErr(err error) {
 
 func logWarn(msg string, v ...interface{}) {
 	if len(v) > 0 {
-		log.Printf("[WARN] "+msg+"\n", v)
+		println(msg)
+		log.Printf("[WARN] "+msg+"\n", v...)
 	} else {
 		log.Printf("[WARN] " + msg + "\n")
 	}
@@ -64,7 +65,7 @@ func logWarn(msg string, v ...interface{}) {
 func logDebug(msg string, v ...interface{}) {
 	if flags.debug {
 		if len(v) > 0 {
-			log.Printf("[DEBUG] "+msg+"\n", v)
+			log.Printf("[DEBUG] "+msg+"\n", v...)
 		} else {
 			log.Printf("[DEBUG] " + msg + "\n")
 		}
