@@ -74,6 +74,10 @@ func logDebug(msg string, v ...interface{}) {
 func readFlags() {
 	// Overrides the default message of "pflag: help requested" in the case of -h / --help
 	flag.ErrHelp = errors.New("")
+	flag.Usage = func() {
+		fmt.Fprintf(os.Stderr, "Usage of replay-zero:\n")
+		flag.PrintDefaults()
+	}
 	flag.BoolVarP(&flags.version, "version", "V", false, "Print version info and exit")
 	flag.IntVarP(&flags.listenPort, "listen-port", "l", 9000, "The port the Replay Zero proxy will listen on")
 	flag.IntVarP(&flags.defaultTargetPort, "target-port", "t", 8080, "The port the Replay Zero proxy will forward to on localhost")
@@ -189,9 +193,9 @@ func createServerHandler(h eventHandler) func(http.ResponseWriter, *http.Request
 }
 
 func main() {
+	readFlags()
 	telemetry = getTelemetryAgent()
 	go telemetry.logUsage(telemetryUsageOpen)
-	readFlags()
 
 	var h eventHandler
 	if len(flags.streamName) > 0 {
