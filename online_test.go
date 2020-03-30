@@ -9,7 +9,7 @@ import (
 // - - - - - - - - - - - - -
 
 func init() {
-	telemetry = &noopTelemetryAgent{}
+	telemetry = &nopTelemetryAgent{}
 }
 
 // - - - - - - - - - - - - -
@@ -18,9 +18,10 @@ func init() {
 
 func TestHandleEvent(t *testing.T) {
 	mockKinesis := &mockKinesisClient{}
+	wrapper := &kinesisWrapper{client: mockKinesis, logger: nopLog}
 	testHandler := &onlineHandler{
 		kinesisStreamName: "test",
-		client:            mockKinesis,
+		kinesisHandle:     wrapper,
 	}
 
 	onlineSampleEvent := generateSampleEvent()

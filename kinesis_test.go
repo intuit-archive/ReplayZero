@@ -45,6 +45,26 @@ func TestGetRegionOverride(t *testing.T) {
 	}
 }
 
+func TestStreamHasSSEError(t *testing.T) {
+	mockKinesis := &mockKinesisClient{}
+
+	hasSSE, err := streamHasSSE("simulate_empty_response", mockKinesis)
+	if err == nil {
+		t.Errorf("Expected error, but got <nil>")
+	}
+	if hasSSE {
+		t.Errorf("Expected 'hasSSE' == FALSE, but was TRUE")
+	}
+
+	hasSSE, err = streamHasSSE("success", mockKinesis)
+	if err != nil {
+		t.Errorf("Expected no error, but got %s", err)
+	}
+	if !hasSSE {
+		t.Errorf("Expected 'hasSSE' == TRUE, but was FALSE")
+	}
+}
+
 func TestBuildMessages(t *testing.T) {
 	expected := EventChunk{
 		ChunkNumber: 0,
@@ -65,9 +85,10 @@ func TestBuildMessages(t *testing.T) {
 
 func TestSendToStreamMarshalError(t *testing.T) {
 	mockKinesis := &mockKinesisClient{}
+	wrapper := &kinesisWrapper{client: mockKinesis}
 
 	// json.Marshal can't Marshal certain types, like channels
-	err := sendToStream(make(chan int), "test", mockKinesis)
+	err := wrapper.sendToStream(make(chan int), "test")
 	if mockKinesis.timesCalled > 0 {
 		t.Error("Expected mock Kinesis client not to be called, but it was")
 	}
@@ -78,8 +99,9 @@ func TestSendToStreamMarshalError(t *testing.T) {
 
 func TestSendToStreamKinesisError(t *testing.T) {
 	mockKinesis := &mockKinesisClient{}
+	wrapper := &kinesisWrapper{client: mockKinesis}
 
-	err := sendToStream(`{"data": "test"}`, "simulate_error", mockKinesis)
+	err := wrapper.sendToStream(`{"data": "test"}`, "simulate_error")
 	if mockKinesis.timesCalled == 0 {
 		t.Error("Expected mock Kinesis client to be called, but it was NOT")
 	}
@@ -90,8 +112,12 @@ func TestSendToStreamKinesisError(t *testing.T) {
 
 func TestSendToStreamKinesisSuccess(t *testing.T) {
 	mockKinesis := &mockKinesisClient{}
+	wrapper := &kinesisWrapper{
+		client: mockKinesis,
+		logger: nopLog,
+	}
 
-	err := sendToStream(`{"data": "test"}`, "test", mockKinesis)
+	err := wrapper.sendToStream(`{"data": "test"}`, "test")
 	if mockKinesis.timesCalled == 0 {
 		t.Error("Expected mock Kinesis client to be called, but it was NOT")
 	}

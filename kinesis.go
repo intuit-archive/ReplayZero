@@ -36,56 +36,71 @@ func getRegion() string {
 	return region
 }
 
-func buildClient(streamName, streamRole string) *kinesis.Kinesis {
+type kinesisWrapper struct {
+	client kinesisiface.KinesisAPI
+	// allows different clients to log certain messages at different levels
+	// Ex. Regular Kinesis handler for sending HTTP data is "INFO" (log.Printf)
+	// Telemetry Kinesis handler is set at "DEBUG" (logDebug)
+	logger func(string, ...interface{})
+}
+
+func buildClient(streamName, streamRole string, logFunc func(string, ...interface{})) *kinesisWrapper {
 	if streamName == kinesaliteStreamName {
 		return buildKinesaliteClient(streamName)
 	}
-	return buildKinesisClient(streamName, streamRole)
+	return buildKinesisClient(streamName, streamRole, logFunc)
 }
 
 // Uses STS to assume an IAM role for credentials to write records
 // to a real Kinesis stream in AWS
-func buildKinesisClient(streamName, streamRole string) *kinesis.Kinesis {
-	log.Printf("Creating AWS Kinesis client")
+func buildKinesisClient(streamName, streamRole string, logFunc func(string, ...interface{})) *kinesisWrapper {
+	logFunc("Creating AWS Kinesis client (stream=%s)", streamName)
 	userSession := session.Must(session.NewSession(&aws.Config{
 		CredentialsChainVerboseErrors: aws.Bool(verboseCredentialErrors),
 		Region:                        aws.String(getRegion()),
 	}))
 
-	log.Println("Fetching temp credentials...")
+	logFunc("Fetching temp credentials...")
 	kinesisTempCreds := stscreds.NewCredentials(userSession, streamRole)
-	log.Println("Success!")
+	logFunc("Success!")
 
-	client := kinesis.New(userSession, &aws.Config{
+	kinesisHandle := kinesis.New(userSession, &aws.Config{
 		CredentialsChainVerboseErrors: aws.Bool(verboseCredentialErrors),
 		Credentials:                   kinesisTempCreds,
 		Region:                        aws.String(getRegion()),
 	})
 
-	sseEnabled, err := streamHasSSE(streamName, client)
+	sseEnabled, err := streamHasSSE(streamName, kinesisHandle)
 	if err != nil {
-		// Note: %s "wraps" the original error
-		logErr(fmt.Errorf("Could not determine if SSE is enabled for stream %s: %s", streamName, err))
-	} else if !sseEnabled {
-		logWarn(fmt.Sprintf("Kinesis stream %s does NOT have Server-Side Encryption (SSE) enabled", streamName))
+		logFunc(err.Error())
 	}
-	return client
+	if !sseEnabled {
+		logWarn(fmt.Sprintf("Kinesis stream '%s' does NOT have Server-Side Encryption (SSE) enabled", streamName))
+	}
+	return &kinesisWrapper{
+		client: kinesisHandle,
+		logger: logFunc,
+	}
 }
 
 func streamHasSSE(streamName string, client kinesisiface.KinesisAPI) (bool, error) {
 	streamInfo, err := client.DescribeStream(&kinesis.DescribeStreamInput{
 		StreamName: aws.String(streamName),
 	})
+	if streamInfo == nil || streamInfo.StreamDescription == nil {
+		return false, fmt.Errorf("Could not determine if SSE is enabled for stream %s: %w", streamName, err)
+	}
+
 	return *streamInfo.StreamDescription.EncryptionType == kinesis.EncryptionTypeKms, err
 }
 
 // Kinesalite is a lightweight implementation of Kinesis
 // useful for development scenarios.
 // https://github.com/mhart/kinesalite
-func buildKinesaliteClient(streamName string) *kinesis.Kinesis {
+func buildKinesaliteClient(streamName string) *kinesisWrapper {
 	log.Printf("Creating local Kinesalite client")
 	log.Printf("Sending unverified traffic to stream endpoint=" + kinesaliteEndpoint)
-	return kinesis.New(session.Must(session.NewSession()), &aws.Config{
+	kinesisHandle := kinesis.New(session.Must(session.NewSession()), &aws.Config{
 		Endpoint:    aws.String(kinesaliteEndpoint),
 		Credentials: credentials.NewStaticCredentials("x", "x", "x"),
 		Region:      aws.String(getRegion()),
@@ -95,6 +110,11 @@ func buildKinesaliteClient(streamName string) *kinesis.Kinesis {
 					InsecureSkipVerify: true},
 			}},
 	})
+
+	return &kinesisWrapper{
+		client: kinesisHandle,
+		logger: log.Printf,
+	}
 }
 
 func chunkData(data string, size int) []string {
@@ -139,13 +159,13 @@ func buildMessages(line string) []EventChunk {
 	return messages
 }
 
-func sendToStream(message interface{}, stream string, client kinesisiface.KinesisAPI) error {
+func (c *kinesisWrapper) sendToStream(message interface{}, stream string) error {
 	dataBytes, err := json.Marshal(message)
 	if err != nil {
 		return err
 	}
 	partition := "replay-partition-key-" + time.Now().String()
-	response, err := client.PutRecord(&kinesis.PutRecordInput{
+	response, err := c.client.PutRecord(&kinesis.PutRecordInput{
 		StreamName:   aws.String(stream),
 		Data:         dataBytes,
 		PartitionKey: &partition,
@@ -153,6 +173,6 @@ func sendToStream(message interface{}, stream string, client kinesisiface.Kinesi
 	if err != nil {
 		return err
 	}
-	log.Printf("%+v\n", response)
+	c.logger("Successfully put record to stream=%s\n%+v\n", stream, response)
 	return nil
 }

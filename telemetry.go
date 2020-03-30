@@ -5,8 +5,6 @@ import (
 	"os"
 	"os/user"
 	"time"
-
-	"github.com/aws/aws-sdk-go/service/kinesis/kinesisiface"
 )
 
 // events
@@ -24,12 +22,12 @@ type telemetryAgent interface {
 }
 
 // No-op agent in case the proper variables are not set
-type noopTelemetryAgent struct{}
+type nopTelemetryAgent struct{}
 
 // Agent to send telemetry to a Kinesis stream
 type kinesisTelemetryAgent struct {
 	stream string
-	client kinesisiface.KinesisAPI
+	client *kinesisWrapper
 }
 
 // logInfo contains data to send to the HTTP endpoint.
@@ -48,16 +46,16 @@ func getTelemetryAgent() telemetryAgent {
 
 	if streamName == "" {
 		logDebug("Missing telemetry stream name, returning no-op agent (will not send telemetry)")
-		return &noopTelemetryAgent{}
+		return &nopTelemetryAgent{}
 	}
 	logDebug("Building Kinesis agent for sending telemetry")
 	return &kinesisTelemetryAgent{
 		stream: streamName,
-		client: buildClient(streamName, streamRole),
+		client: buildClient(streamName, streamRole, logDebug),
 	}
 }
 
-func (agent *noopTelemetryAgent) logUsage(event int) {
+func (agent *nopTelemetryAgent) logUsage(event int) {
 	logDebug("Telemetry: NO-OP")
 }
 
@@ -107,5 +105,5 @@ func getCurrentUser() string {
 // Send a telemetry message to the stream specified by `REPLAY_ZERO_TELEMETRY_STREAM`
 // and authorized by the IAM role `REPLAY_ZERO_TELEMETRY_ROLE`
 func (agent *kinesisTelemetryAgent) streamTelemetry(info *logInfo) error {
-	return sendToStream(info, agent.stream, agent.client)
+	return agent.client.sendToStream(info, agent.stream)
 }

@@ -12,7 +12,7 @@ import (
 )
 
 func init() {
-	telemetry = &noopTelemetryAgent{}
+	telemetry = &nopTelemetryAgent{}
 }
 
 func TestOfflineHandleEventNoFlush(t *testing.T) {
