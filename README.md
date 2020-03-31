@@ -11,6 +11,28 @@ A lightweight, localized interface to API recording and test generation. Automat
 
 **NOTE:** Replay Zero may be a web proxy, but **DO NOT USE IN PRODUCTION... yet.** This tool was originally made specifically with a developer laptop as the target environment (this can be seen in sample flows below), and should only be viewed as a developer productivity / testing assistant for now.
 
+## Installation
+
+### Homebrew
+
+```sh
+brew tap intuit/replay-zero https://github.com/intuit/ReplayZero
+brew install replay-zero
+```
+
+### Release builds
+
+Binaries are built + attached to releases for Linux, MacOS and Windows.
+
+```sh
+# Download a platform specific build
+curl -vkL https://github.com/intuit/ReplayZero/releases/download/v0.0.2/replay-zero-osx.zip
+# Unpack && rename
+unzip replay-zero-osx.zip && mv ./replay-zero-osx ./replay-zero
+# Make executable
+chmod a+x ./replay-zero
+```
+
 ## Quickstart
 
 ### How does it work
