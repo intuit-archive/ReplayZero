@@ -16,9 +16,9 @@ A lightweight, localized interface to API recording and test generation. Automat
 ### How does it work
 
 1. HTTP requests are proxied through an embedded web server
-2. Request + response data (URI, headers, payloads, response code) are collected and buffered
-3. Upon buffer flush, HTTP data is sent through a templating engine and converted into Karate scenarios
-4. Test contents are written to files on disk
+1. Request + response data (URI, headers, payloads, response code) are collected and buffered
+1. Upon buffer flush, HTTP data is sent through a templating engine and converted into Karate scenarios
+1. Test contents are written to files on disk
 
 ![Simple recording flow](./img/arch_simple.png)
 
@@ -30,27 +30,29 @@ A lightweight, localized interface to API recording and test generation. Automat
 replay-zero
 ```
 
-2. In another terminal tab, download and start a dummy echo server on port 8080.
+1. In another terminal tab, download and start a dummy echo server on port 8080.
 
 ```sh
 npm install http-echo-server -g
 http-echo-server 8080
 ```
 
-3. Send some requests via curl, specifying Replay Zero as a proxy.
+1. Send some requests via curl, specifying Replay Zero as a proxy.
 
 ```sh
 curl --proxy http://localhost:9000 -H 'my_header: some_value' localhost:8080/sample/api
 ```
 
-4. Shut down Replay Zero with `Ctrl + C` in the same terminal tab you started it in. Do the same for the echo server if you started that as well.
+1. Shut down Replay Zero with `Ctrl + C` in the same terminal tab you started it in. Do the same for the echo server if you started that as well.
 
 ## Streaming Mode
+
 Instead of saving events locally, Replay Zero can also stream recorded request/response pairs to an [AWS Kinesis data stream](https://aws.amazon.com/kinesis/data-streams/) if you want to set up remote processing/storage.
 
 To enable streaming mode
+
 1. Have valid AWS credentials for your Kinesis stream in either environment variables or a shared credentials file (see FAQ below for more)
-2. Pass in values to the following flags
+1. Pass in values to the following flags
    * `-s` / `--stream-name` - name of Kinesis stream
    * `-r` / `--stream-role-arn` - full IAM role ARN (`arn:aws:iam::<account>:role/...`) for a role that must allow at least the `kinesis:PutRecord` and `kinesis:DescribeStream` actions
 
@@ -67,6 +69,7 @@ See the AWS docs on [Kinesis SSE](https://docs.aws.amazon.com/streams/latest/dev
 ### Configure Proxy targets
 
 #### Default target port
+
 By default, all events Replay Zero receives will be proxied to `localhost:8080`. The default target port can be changed with the `--target-port` flag
 
 ```sh
@@ -74,6 +77,7 @@ replay-zero --target-port=8575
 ```
 
 #### Proxy to multiple targets
+
 By reading the contents of the `Host` header, Replay Zero can rewrite the proxy target on a per-request basis. Certain tools will do this for you (like the above methods for configuring a proxy using cURL or Postman). If you are sending your requests to be proxied some other way, as long as the `Host` header is set with the right localhost target each request will be dynamically rerouted to the right location. Now's a good time to remind that current only localhost / HTTP traffic is supported for proxying.
 
 ### Request Batching
@@ -186,11 +190,12 @@ caused by: RequestError: send request failed
 ```
 
 A: Check that either
-  * you have valid AWS credentials under the right profile in the file `~/.aws/credentials`
-  * the following environment variables are set in your current shell
-    * `AWS_ACCESS_KEY_ID`
-    * `AWS_SECRET_ACCESS_KEY`
-    * `AWS_SESSION_TOKEN` (optional)
+
+* you have valid AWS credentials under the right profile in the file `~/.aws/credentials`
+* the following environment variables are set in your current shell
+  * `AWS_ACCESS_KEY_ID`
+  * `AWS_SECRET_ACCESS_KEY`
+  * `AWS_SESSION_TOKEN` (optional)
 
 ## Telemetry
 
@@ -217,6 +222,7 @@ See the AWS docs on [Kinesis SSE](https://docs.aws.amazon.com/streams/latest/dev
 * [golangci-lint](https://github.com/golangci/golangci-lint#install) for linting + static analysis
 
 ### Basics
+
 * Running `make` will build the tool for Mac, Linux, and Windows.
 * Running `make test` will run tests
 * Running `make coverage` will run tests, save the coverage, and then open your browser to the coverage report
@@ -226,8 +232,9 @@ See the AWS docs on [Kinesis SSE](https://docs.aws.amazon.com/streams/latest/dev
 For both streaming recording and telemetry messages, Replay Zero uses Amazon Kinesis. To test out Kinesis functionality locally, the tool [Kinesalite](https://github.com/mhart/kinesalite) provides a lightweight implementation that works well in a dev environment but can interact with the AWS Kinesis API's.
 
 If you'd like to test your own consumer of either Replay Zero streaming data or telemtry,
+
 1. Follow the Kinesalite docs to install then start it on `https://localhost:4567`
-2. When specifying the stream name for Replay Zero set the stream name to `replay-zero-dev` and a special client will be constructed to connect to Kinesalite. Replay Zero will not try to assume an IAM role for credentials with this client.
+1. When specifying the stream name for Replay Zero set the stream name to `replay-zero-dev` and a special client will be constructed to connect to Kinesalite. Replay Zero will not try to assume an IAM role for credentials with this client.
     * Stream name for HTTP data: `-s` / `--stream-name` flag
     * Stream name for telemetry: `REPLAY_ZERO_TELEMETRY_STREAM` environment variable
 
