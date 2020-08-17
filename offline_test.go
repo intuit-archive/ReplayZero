@@ -7,6 +7,7 @@ import (
 	"log"
 	"testing"
 
+	"github.com/Masterminds/sprig"
 	"github.com/intuit/replay-zero/templates"
 	"github.com/kylelemons/godebug/diff"
 )
@@ -96,7 +97,7 @@ func TestReadBadBatchSize(t *testing.T) {
 
 // Table-driven test for validating all templates
 func TestVerifyTemplates(t *testing.T) {
-	testFuncMap := templates.DefaultFuncMap()
+	testFuncMap := sprig.TxtFuncMap()
 	testFuncMap["now"] = func() string {
 		return "18 Feb 20 12:22 PST"
 	}
