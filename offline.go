@@ -10,7 +10,7 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/intuit/replay-zero/templates"
+	"github.com/Masterminds/sprig"
 )
 
 const (
@@ -40,7 +40,7 @@ func getOfflineHandler(output string) eventHandler {
 		defaultBatchSize: flags.batchSize,
 		currentBatchSize: flags.batchSize,
 		writerFactory:    getFileWriter,
-		templateFuncMap:  templates.DefaultFuncMap(),
+		templateFuncMap:  sprig.TxtFuncMap(),
 	}
 }
 
@@ -104,7 +104,7 @@ func getFileWriter(h *offlineHandler) io.Writer {
 }
 
 func (h *offlineHandler) runTemplate() error {
-	t, err := template.New("").Funcs(h.templateFuncMap).Parse(h.format.template)
+	t, err := template.New("").Funcs(sprig.TxtFuncMap()).Parse(h.format.template)
 	if err != nil {
 		return err
 	}
