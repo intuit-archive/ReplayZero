@@ -1,3 +1,22 @@
+# v0.0.3 (Wed Aug 26 2020)
+
+#### 🐛 Bug Fix
+
+- Use Sprig functions in default templates [#21](https://github.com/intuit/ReplayZero/pull/21) ([@wtait1](https://github.com/wtait1))
+- Integrated Sprig Library [#20](https://github.com/intuit/ReplayZero/pull/20) (Siddhi_Mundhra@intuit.com [@siddhi96](https://github.com/siddhi96))
+
+#### 📝 Documentation
+
+- Add Homebrew formula [#19](https://github.com/intuit/ReplayZero/pull/19) ([@wtait1](https://github.com/wtait1))
+
+#### Authors: 3
+
+- [@siddhi96](https://github.com/siddhi96)
+- smundhra (Siddhi_Mundhra@intuit.com)
+- Will Tait ([@wtait1](https://github.com/wtait1))
+
+---
+
 # v0.0.2 (Mon Mar 30 2020)
 
 #### 🐛 Bug Fix
