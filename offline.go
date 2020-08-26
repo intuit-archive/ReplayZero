@@ -104,7 +104,7 @@ func getFileWriter(h *offlineHandler) io.Writer {
 }
 
 func (h *offlineHandler) runTemplate() error {
-	t, err := template.New("").Funcs(sprig.TxtFuncMap()).Parse(h.format.template)
+	t, err := template.New("").Funcs(h.templateFuncMap).Parse(h.format.template)
 	if err != nil {
 		return err
 	}

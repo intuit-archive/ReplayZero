@@ -52,7 +52,7 @@ val scenario_{{$index}}: ScenarioBuilder = scenario("scenario_{{$index}}")
 {{ end -}}
 {{- println -}}
 setUp(
-	{{- $toSkip := decr (len .)}}
+	{{- $toSkip := sub (len .) 1}}
 	{{- range $index, $event := . }}
 	scenario_{{$index}}.inject(rampUsersPerSec(initialTps) to steadyStateTps during (rampDuration minutes),
 		constantUsersPerSec(steadyStateTps) during (steadyStateDuration minutes)){{if ne $index $toSkip }},{{end}}
@@ -61,7 +61,7 @@ setUp(
 	.protocols(httpProtocol)
 	.assertions(
 		{{- range $index, $event := . -}}
-			{{- range $k, $v := mkMap "1:99" "2:90" "3:50"}}
+			{{- range $k, $v := dict "1" "99" "2" "90" "3" "50"}}
 		details("http_{{$index}}").responseTime.percentile{{$k}}.lessThan(TP{{$v}}_RESPONSE_TIME),
 			{{- end}}	
 		{{- end}}
