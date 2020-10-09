@@ -11,9 +11,9 @@ import (
 	"strings"
 	"syscall"
 
+	"github.com/intuit/replay-zero/templates"
 	flag "github.com/spf13/pflag"
 
-	"github.com/intuit/replay-zero/templates"
 	"github.com/ztrue/shutdown"
 )
 
@@ -32,6 +32,7 @@ var (
 		defaultTargetPort int
 		batchSize         int
 		output            string
+		extension         string
 		debug             bool
 		streamRoleArn     string
 		streamName        string
@@ -84,7 +85,8 @@ func readFlags() {
 	flag.IntVarP(&flags.defaultTargetPort, "target-port", "t", 8080, "The port the Replay Zero proxy will forward to on localhost")
 	flag.BoolVar(&flags.debug, "debug", false, "Set logging to also print debug messages")
 	flag.IntVarP(&flags.batchSize, "batch-size", "b", 1, "Buffer events before writing out to a file")
-	flag.StringVarP(&flags.output, "output", "o", "karate", "Either [karate] or [gatling]")
+	flag.StringVarP(&flags.output, "output", "o", "karate", "Either [karate] or [path/to/custom/template]")
+	flag.StringVarP(&flags.extension, "extension", "e", "", "For custom output template")
 	flag.StringVarP(&flags.streamName, "stream-name", "s", "", "AWS Kinesis Stream name (streaming mode only)")
 	flag.StringVarP(&flags.streamRoleArn, "stream-role-arn", "r", "", "AWS Kinesis Stream ARN (streaming mode only)")
 	flag.Parse()
@@ -100,25 +102,35 @@ func readFlags() {
 	} else if flags.batchSize > 1 {
 		log.Printf("Using fixed batch size of %d\n", flags.batchSize)
 	}
+
+	// check if template exist at the provided path
+	// TODO: add validation for correctness of template
+	if flags.output != "karate" {
+		_, err := ioutil.ReadFile(flags.output)
+		if err != nil {
+			panic(err)
+		}
+		if flags.extension == "" {
+			log.Printf("For custom template, output extension is expected to be passed using --extension flag.")
+		}
+	}
 }
 
-func getFormat(output string) outputFormat {
+func getFormat(output string, extension string) outputFormat {
 	switch output {
 	case "karate":
 		return outputFormat{
 			template:  templates.KarateBase,
 			extension: "feature",
 		}
-	case "gatling":
-		return outputFormat{
-			template:  templates.GatlingBase,
-			extension: "scala",
-		}
 	default:
-		log.Printf("Unknown output '%s', defaulting to karate", output)
+		dat, err := ioutil.ReadFile(output)
+		if err != nil {
+			panic(err)
+		}
 		return outputFormat{
-			template:  templates.KarateBase,
-			extension: "feature",
+			template:  string(dat),
+			extension: extension,
 		}
 	}
 }
@@ -208,7 +220,7 @@ func main() {
 		h = getOnlineHandler(flags.streamName, flags.streamRoleArn)
 	} else {
 		log.Printf("Running OFFLINE, writing out events to %s files\n", flags.output)
-		h = getOfflineHandler(flags.output)
+		h = getOfflineHandler(flags.output, flags.extension)
 	}
 
 	shutdown.Add(func() {
