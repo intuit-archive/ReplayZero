@@ -34,9 +34,9 @@ type offlineHandler struct {
 	templateFuncMap  template.FuncMap
 }
 
-func getOfflineHandler(output string, extension string) eventHandler {
+func getOfflineHandler(template string, extension string) eventHandler {
 	return &offlineHandler{
-		format:           getFormat(output, extension),
+		format:           getFormat(template, extension),
 		defaultBatchSize: flags.batchSize,
 		currentBatchSize: flags.batchSize,
 		writerFactory:    getFileWriter,

@@ -11,7 +11,7 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/intuit/replay-zero/templates"
+	"github.com/markbates/pkger"
 	flag "github.com/spf13/pflag"
 
 	"github.com/ztrue/shutdown"
@@ -31,7 +31,7 @@ var (
 		listenPort        int
 		defaultTargetPort int
 		batchSize         int
-		output            string
+		template          string
 		extension         string
 		debug             bool
 		streamRoleArn     string
@@ -82,10 +82,10 @@ func readFlags() {
 	}
 	flag.BoolVarP(&flags.version, "version", "V", false, "Print version info and exit")
 	flag.IntVarP(&flags.listenPort, "listen-port", "l", 9000, "The port the Replay Zero proxy will listen on")
-	flag.IntVarP(&flags.defaultTargetPort, "target-port", "t", 8080, "The port the Replay Zero proxy will forward to on localhost")
+	flag.IntVarP(&flags.defaultTargetPort, "target-port", "p", 8080, "The port the Replay Zero proxy will forward to on localhost")
 	flag.BoolVar(&flags.debug, "debug", false, "Set logging to also print debug messages")
 	flag.IntVarP(&flags.batchSize, "batch-size", "b", 1, "Buffer events before writing out to a file")
-	flag.StringVarP(&flags.output, "output", "o", "karate", "Either [karate] or [path/to/custom/template]")
+	flag.StringVarP(&flags.template, "template", "t", "karate", "Either [karate] or [gatling] or [path/to/custom/template]")
 	flag.StringVarP(&flags.extension, "extension", "e", "", "For custom output template")
 	flag.StringVarP(&flags.streamName, "stream-name", "s", "", "AWS Kinesis Stream name (streaming mode only)")
 	flag.StringVarP(&flags.streamRoleArn, "stream-role-arn", "r", "", "AWS Kinesis Stream ARN (streaming mode only)")
@@ -105,26 +105,52 @@ func readFlags() {
 
 	// check if template exist at the provided path
 	// TODO: add validation for correctness of template
-	if flags.output != "karate" {
-		_, err := ioutil.ReadFile(flags.output)
+	if !(flags.template == "karate" || flags.template == "gatling") {
+		_, err := ioutil.ReadFile(flags.template)
 		if err != nil {
+			log.Printf("Failed to load template")
 			panic(err)
 		}
 		if flags.extension == "" {
-			log.Printf("For custom template, output extension is expected to be passed using --extension flag.")
+			log.Fatal("For custom template, output extension is expected to be passed using --extension or -e flag.")
+			os.Exit(0)
 		}
 	}
 }
 
-func getFormat(output string, extension string) outputFormat {
-	switch output {
+// get embeded template file content
+func getPkgTemplate(filePath string) string {
+	f, err := pkger.Open(filePath)
+	if err != nil {
+		panic(err)
+	}
+	defer f.Close()
+	info, err := f.Stat()
+	if err != nil {
+		panic(err)
+	}
+	b := make([]byte, info.Size())
+	content, err := f.Read(b)
+	if err != nil {
+		panic(err)
+	}
+	return string(b[:content])
+}
+
+func getFormat(template string, extension string) outputFormat {
+	switch template {
 	case "karate":
 		return outputFormat{
-			template:  templates.KarateBase,
+			template:  getPkgTemplate("/templates/karate_default.template"),
 			extension: "feature",
 		}
+	case "gatling":
+		return outputFormat{
+			template:  getPkgTemplate("/templates/gatling_default.template"),
+			extension: "scala",
+		}
 	default:
-		dat, err := ioutil.ReadFile(output)
+		dat, err := ioutil.ReadFile(template)
 		if err != nil {
 			panic(err)
 		}
@@ -219,8 +245,8 @@ func main() {
 		log.Println("Running ONLINE, sending recorded events to Kinesis")
 		h = getOnlineHandler(flags.streamName, flags.streamRoleArn)
 	} else {
-		log.Printf("Running OFFLINE, writing out events to %s files\n", flags.output)
-		h = getOfflineHandler(flags.output, flags.extension)
+		log.Printf("Running OFFLINE, writing out events to %s files\n", flags.template)
+		h = getOfflineHandler(flags.template, flags.extension)
 	}
 
 	shutdown.Add(func() {
