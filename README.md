@@ -176,7 +176,7 @@ e46bfc69b893b659c4db713ba2cc84f1 GET /some/other/api
 
 ### Different output formats
 
-By default Replay Zero generates Karate `*.feature` files and outputs them to the directory Replay Zero was started in. But the `--output` flag allows you to specify the format you'd like your tests to be generated in. The created files will always following the naming format `replay_scenarios_{N}.{extension}`. Currently the supported test formats are
+By default Replay Zero generates Karate `*.feature` files and outputs them to the directory Replay Zero was started in. But the `--template` or `-t` flag allows you to specify the format you'd like your tests to be generated in. The created files will always following the naming format `replay_scenarios_{N}.{extension}`. Out of the box we support below test formats
 
 * Karate  (`*.feature`)
 * Gatling (`*.scala`)
@@ -184,7 +184,15 @@ By default Replay Zero generates Karate `*.feature` files and outputs them to th
 Specify the output as a lowercase input to the flag:
 
 ```sh
-replay-zero --output=gatling
+replay-zero --template=gatling
+```
+
+You can also pass path to your own custom template (in case you dont want to use karate or gatling) to the same paramater and `--extension` or `-e` to pass extentsion of the output.
+
+E.g.
+
+```sh
+replay-zero --template=/path/to/your/custom-template --extension=java
 ```
 
 ## Roadmap
