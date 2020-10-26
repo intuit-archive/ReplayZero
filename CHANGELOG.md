@@ -1,3 +1,15 @@
+# v0.1.0 (Mon Oct 26 2020)
+
+#### 🚀 Enhancement
+
+- adding support for custom templates [#22](https://github.com/intuit/ReplayZero/pull/22) ([@shubhamarora](https://github.com/shubhamarora))
+
+#### Authors: 1
+
+- Shubham Arora ([@shubhamarora](https://github.com/shubhamarora))
+
+---
+
 # v0.0.3 (Wed Aug 26 2020)
 
 #### 🐛 Bug Fix
