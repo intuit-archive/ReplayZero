@@ -47,6 +47,8 @@ github.com/aws/aws-sdk-go/service/sts
 github.com/aws/aws-sdk-go/service/sts/stsiface
 # github.com/go-test/deep v1.0.5
 github.com/go-test/deep
+# github.com/gobuffalo/here v0.6.2
+github.com/gobuffalo/here
 # github.com/google/uuid v1.1.1
 github.com/google/uuid
 # github.com/huandu/xstrings v1.3.2
@@ -57,6 +59,12 @@ github.com/imdario/mergo
 github.com/jmespath/go-jmespath
 # github.com/kylelemons/godebug v1.1.0
 github.com/kylelemons/godebug/diff
+# github.com/markbates/pkger v0.17.1
+github.com/markbates/pkger
+github.com/markbates/pkger/here
+github.com/markbates/pkger/internal/maps
+github.com/markbates/pkger/pkging
+github.com/markbates/pkger/pkging/stdos
 # github.com/mitchellh/copystructure v1.0.0
 github.com/mitchellh/copystructure
 # github.com/mitchellh/reflectwalk v1.0.0
